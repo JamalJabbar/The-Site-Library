@@ -57,17 +57,21 @@ export const KEYFRAMES = [
     chapter: "frontispiece",
     local: 0,
     camera: {
-      position: [0.2, 1.12, 11.3],
-      target: [0.36, 0.86, 4.6],
+      // Held back a further tenth so the volume clears the headline: its edge
+      // should land mid-way through the last letter of "Websites", not swallow
+      // the whole of it. The lens moves, not the book, which has to keep its
+      // true size to sit correctly in the shelf later.
+      position: [0.021, 1.12, 12.05],
+      target: [0.181, 0.86, 4.6],
       fov: 34,
-      mobile: { position: [0.1, 1.1, 13.2], target: [0.3, 0.9, 4.6], fov: 41 }
+      mobile: { position: [0.1, 1.1, 14.15], target: [0.3, 0.9, 4.6], fov: 41 }
     },
     world: {
-      // The volume sits about 6.7 units from the lens. Everything past 7 is
+      // The volume sits about 7.45 units from the lens. Everything past it is
       // bleached out of the key light, so the room is present but unreadable:
       // an abstract cream field. Opening these two distances is the reveal.
       key: 2.05, env: 0.85, practical: 0, table: 0, heroLight: 1,
-      hazeNear: 6.95, hazeFar: 8.8, ground: "#f0ece3",
+      hazeNear: 7.72, hazeFar: 9.78, ground: "#f0ece3",
       dust: 0, grain: 0.14, exposure: 1.0
     }
   },
