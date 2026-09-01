@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "title": "Design System: The Site Library",
+  "extensions": {
+    "colorMeta": {
+      "parchment": { "role": "neutral", "displayName": "Library Parchment", "canonical": "#f0ece3", "tonalRamp": ["#292720", "#47443b", "#676359", "#89847a", "#aaa59b", "#cbc6bc", "#e3ded5", "#f7f3eb"] },
+      "paper": { "role": "neutral", "displayName": "Page Paper", "canonical": "#e5ded1", "tonalRamp": ["#28251f", "#46423a", "#655f55", "#847e73", "#a49d91", "#c3bbae", "#ddd5c8", "#f5eee2"] },
+      "cream": { "role": "neutral", "displayName": "Reading Cream", "canonical": "#f8f4eb", "tonalRamp": ["#2b2922", "#4b4840", "#6c685f", "#8e8980", "#b0aba1", "#d2cdc3", "#e9e4da", "#fffaf1"] },
+      "ink": { "role": "neutral", "displayName": "Printing Ink", "canonical": "#151310", "tonalRamp": ["#151310", "#302d28", "#4d4943", "#6b6760", "#8b867f", "#aca7a0", "#d1ccc4", "#f2eee7"] },
+      "soft-ink": { "role": "neutral", "displayName": "Soft Ink", "canonical": "#35302a", "tonalRamp": ["#171411", "#35302a", "#554f48", "#756f67", "#958f87", "#b6b0a8", "#d8d2ca", "#f5f0e8"] },
+      "walnut": { "role": "secondary", "displayName": "Walnut", "canonical": "#281d17", "tonalRamp": ["#160f0c", "#281d17", "#49352a", "#6c5040", "#906e5a", "#b5927c", "#d5b8a3", "#f2dfcf"] },
+      "walnut-dark": { "role": "secondary", "displayName": "Deep Walnut", "canonical": "#18110e", "tonalRamp": ["#100b09", "#18110e", "#392822", "#5b4137", "#7f5c4e", "#a47c6b", "#c8a493", "#edd4c6"] },
+      "oxblood": { "role": "secondary", "displayName": "Oxblood Cloth", "canonical": "#592328", "tonalRamp": ["#250d11", "#41171c", "#66272d", "#8b3a41", "#b1545c", "#d57a81", "#eca8ac", "#f9d9da"] },
+      "forest": { "role": "secondary", "displayName": "Forest Cloth", "canonical": "#1f2b25", "tonalRamp": ["#0d1511", "#1f2b25", "#354b40", "#4d6d5d", "#69907c", "#8db39f", "#b6d4c3", "#e0eee5"] },
+      "navy": { "role": "secondary", "displayName": "Night Navy Cloth", "canonical": "#1c2632", "tonalRamp": ["#0b1118", "#1c2632", "#304358", "#47627e", "#6182a5", "#85a4c4", "#b1c6dc", "#dce8f2"] },
+      "brass": { "role": "primary", "displayName": "Aged Brass", "canonical": "#ad8955", "tonalRamp": ["#261b0d", "#48351d", "#6b502d", "#8f6d40", "#ad8955", "#c7a877", "#ddc99f", "#f3ead1"] },
+      "brass-soft": { "role": "primary", "displayName": "Brass Paper Edge", "canonical": "#c6a776", "tonalRamp": ["#2b200f", "#503d22", "#765b36", "#9d7d4d", "#c6a776", "#d7bd93", "#e7d4b4", "#f7edd8"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Publisher Display", "purpose": "Hero phrases and spatial title interleaving only." },
+      "headline": { "displayName": "Chapter Headline", "purpose": "Editorial chapter declarations and commission copy." },
+      "body": { "displayName": "Reading Text", "purpose": "Explanatory prose with calm technical clarity." },
+      "label": { "displayName": "Archive Label", "purpose": "Navigation, metadata, wayfinding, and actions." }
+    },
+    "shadows": [
+      { "name": "project-sheet", "value": "-40px 0 100px rgba(19, 12, 9, 0.18)", "purpose": "Desktop inspection panel moving over the library." },
+      { "name": "mobile-sheet", "value": "0 -28px 80px rgba(19, 12, 9, 0.22)", "purpose": "Mobile inspection bottom sheet." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Interface arrival, reveal, and responsive state changes." },
+      { "name": "ease-in-out", "value": "cubic-bezier(0.76, 0, 0.24, 1)", "purpose": "Deliberate scene and panel transitions." },
+      { "name": "scroll-scrub", "value": "0.8-1.1 seconds", "purpose": "ScrollTrigger catch-up range across authored chapters." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "767px" },
+      { "name": "compact-desktop", "value": "1120px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Outlined Action",
+      "kind": "button",
+      "refersTo": "outlined-action",
+      "description": "Primary commission action on parchment.",
+      "html": "<button class=\"ds-outlined-action\">COMMISSION A SITE</button>",
+      "css": ".ds-outlined-action { min-height: 42px; padding: 13px 18px 12px; border: 1px solid #151310; border-radius: 2px; background: transparent; color: #151310; font: 650 0.61rem/1.5 sans-serif; letter-spacing: .16em; text-transform: uppercase; transition: color 320ms cubic-bezier(.16,1,.3,1), background 320ms cubic-bezier(.16,1,.3,1), transform 180ms; } .ds-outlined-action:hover, .ds-outlined-action:focus-visible { background: #151310; color: #f8f4eb; } .ds-outlined-action:focus-visible { outline: 2px solid #ad8955; outline-offset: 5px; } .ds-outlined-action:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Dark Outlined Action",
+      "kind": "button",
+      "refersTo": "outlined-action-dark",
+      "description": "Primary commission action on walnut.",
+      "html": "<button class=\"ds-dark-action\">COMMISSION A SITE</button>",
+      "css": ".ds-dark-action { min-height: 42px; padding: 13px 18px 12px; border: 1px solid #f8f4eb; border-radius: 2px; background: transparent; color: #f8f4eb; font: 650 0.61rem/1.5 sans-serif; letter-spacing: .16em; text-transform: uppercase; transition: color 320ms cubic-bezier(.16,1,.3,1), background 320ms cubic-bezier(.16,1,.3,1), transform 180ms; } .ds-dark-action:hover, .ds-dark-action:focus-visible { background: #f8f4eb; color: #151310; } .ds-dark-action:focus-visible { outline: 2px solid #ad8955; outline-offset: 5px; } .ds-dark-action:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Text Action",
+      "kind": "button",
+      "refersTo": "text-action",
+      "description": "Underlined editorial action without a container.",
+      "html": "<button class=\"ds-text-action\">VIEW PROJECT <span aria-hidden=\"true\">&#8599;</span></button>",
+      "css": ".ds-text-action { display: inline-flex; gap: 10px; padding: 9px 0; border: 0; border-bottom: 1px solid currentColor; background: transparent; color: #151310; font: 650 0.61rem/1.5 sans-serif; letter-spacing: .14em; text-transform: uppercase; transition: gap 240ms cubic-bezier(.16,1,.3,1), color 240ms; } .ds-text-action:hover, .ds-text-action:focus-visible { gap: 15px; color: #ad8955; } .ds-text-action:focus-visible { outline: 2px solid #ad8955; outline-offset: 5px; }"
+    },
+    {
+      "name": "Archive Navigation",
+      "kind": "nav",
+      "description": "Hairline desktop index with a bounded commission action.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\">INDEX</a><a href=\"#\">SELECTED WORKS</a><a href=\"#\">STUDIO</a></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 34px; color: #151310; font: 650 .66rem/1.5 sans-serif; letter-spacing: .13em; text-transform: uppercase; } .ds-nav a { position: relative; padding: 9px 0; color: inherit; text-decoration: none; } .ds-nav a::after { position: absolute; right: 0; bottom: 4px; left: 0; height: 1px; background: currentColor; content: ''; transform: scaleX(0); transform-origin: right; transition: transform 300ms cubic-bezier(.16,1,.3,1); } .ds-nav a:hover::after, .ds-nav a:focus-visible::after { transform: scaleX(1); transform-origin: left; }"
+    },
+    {
+      "name": "Publisher Bookplate",
+      "kind": "custom",
+      "description": "The precise nested-line identity mark used in the fixed header.",
+      "html": "<span class=\"ds-bookplate\">TSL</span>",
+      "css": ".ds-bookplate { position: relative; display: grid; width: 30px; height: 38px; border: 1px solid #151310; color: #151310; font: 500 .54rem/1 Georgia, serif; place-items: center; } .ds-bookplate::after { position: absolute; width: 20px; height: 28px; border: 1px solid currentColor; content: ''; opacity: .32; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Living Edition",
+    "overview": "The system treats a premium studio portfolio as a contemporary private press. Typography, physical book construction, restrained interface chrome, and one continuous architectural world make the metaphor functional rather than decorative. The mood is quiet, tactile, and exacting, with generous negative space interrupted by deliberate moments of editorial scale.",
+    "keyCharacteristics": [
+      "High-contrast publishing typography interrupted by a physical 3D volume.",
+      "Square precision, hairline rules, and almost no decorative rounding.",
+      "Warm neutral architecture with rare brass and project-specific binding colors.",
+      "Asymmetric composition at large sizes and simplified touch-first framing on mobile.",
+      "Reversible, scroll-controlled motion with semantic HTML always present."
+    ],
+    "rules": [
+      { "name": "The Rare Metal Rule", "body": "Brass stays below roughly 10% of a frame. Its scarcity is what makes foil and focus feel valuable.", "section": "colors" },
+      { "name": "The Two Voices Rule", "body": "Bodoni speaks in titles and authored statements. Manrope handles every navigational, factual, and operational sentence.", "section": "typography" },
+      { "name": "The Physical Depth Rule", "body": "If a layer is not moving above another layer or representing a physical object, it does not receive a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do make the library metaphor functional: each project remains a selectable, inspectable volume.",
+      "Do preserve Library Parchment (#f0ece3), Printing Ink (#151310), and Aged Brass (#ad8955) as the global hierarchy.",
+      "Do use broad editorial type with narrow label copy and strong negative space.",
+      "Do keep camera roll at zero, FOV between 32 and 47 degrees, and local pointer motion under 7 degrees.",
+      "Do provide keyboard, touch, reduced-motion, and forced-fallback access to the same content."
+    ],
+    "donts": [
+      "Don't turn the portfolio into a standard agency card grid with a decorative 3D hero.",
+      "Don't use literal Victorian, gothic, fantasy, Hogwarts, steampunk, or nostalgic old-book imagery.",
+      "Don't use generic black luxury styling, neon technology demos, futuristic HUDs, glassmorphism, or floating gradient blobs.",
+      "Don't imitate Stripe Press, copy its covers, or borrow Stripe branding.",
+      "Don't add Three.js spectacle that is disconnected from navigation or story.",
+      "Don't introduce template-driven SaaS hierarchy, excessive rounded cards, pills, or gratuitous scroll effects."
+    ]
+  }
+}
