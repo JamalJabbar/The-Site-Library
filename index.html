@@ -36,16 +36,13 @@
     <div class="backdrop" data-backdrop aria-hidden="true"></div>
 
     <!--
-      The first headline line lives underneath the renderer so the volume
-      physically occludes it. It is an exact layout twin of the hero block, with
-      the second line held as invisible spacing, which keeps the two halves of
-      the headline aligned without either one guessing the other's position.
+      The upper headline line lives underneath the renderer so the volume
+      physically occludes it. Both lines are positioned against the viewport
+      rather than sharing a flow, which is what lets them sit in different
+      layers and still hold the composition.
     -->
     <div class="behind-type" aria-hidden="true">
-      <div class="behind-type__block">
-        <span class="line line--upper">Websites</span>
-        <span class="line line--lower line--ghost"><em>worth keeping.</em></span>
-      </div>
+      <span class="line line--upper">Websites</span>
     </div>
 
     <!-- One persistent renderer for the whole journey -->
@@ -89,7 +86,6 @@
         <div class="chapter__stage frontispiece">
           <p class="kicker" data-hero-kicker>The Site Library / Independent digital design studio</p>
           <h1 class="frontispiece__title" id="frontispiece-title">
-            <span class="line line--upper line--ghost" aria-hidden="true">Websites</span>
             <span class="line line--lower" aria-hidden="true"><em>worth keeping.</em></span>
             <span class="sr-only">Websites worth keeping.</span>
           </h1>

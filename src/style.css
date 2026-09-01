@@ -29,11 +29,14 @@
   --serif: "Bodoni Moda Variable", "Bodoni Moda", Didot, Georgia, serif;
   --grotesk: "Manrope Variable", Manrope, "Helvetica Neue", Arial, sans-serif;
 
-  --display-xl: clamp(4rem, 11.4vw, 11.5rem);
-  --display-lg: clamp(2.9rem, 7.4vw, 6.8rem);
+  --display-xl: clamp(5rem, 11.5vw, 11rem);
+  --display-lg: clamp(3.7rem, 8.2vw, 8rem);
   --display-md: clamp(2rem, 4.4vw, 3.9rem);
 
   --gutter: clamp(20px, 4.2vw, 64px);
+  /* The frontispiece copy is inset further than the masthead on purpose: the
+     headline needs more margin around it than the navigation does. */
+  --hero-gutter: clamp(24px, 4.5vw, 70px);
   --masthead: 88px;
 
   /* Written once per surface change, never per frame. */
@@ -169,18 +172,9 @@ button {
   position: fixed;
   inset: 0;
   z-index: 0;
-  display: grid;
-  align-content: center;
-  padding: var(--masthead) var(--gutter) clamp(64px, 9vh, 104px);
   color: var(--fg);
   pointer-events: none;
 }
-
-.behind-type__block { width: 100%; }
-
-/* Holds its line's exact box while showing nothing, so both halves of the
-   headline sit on one shared grid. */
-.line--ghost { visibility: hidden; }
 
 .stage {
   position: fixed;
@@ -437,82 +431,100 @@ main { position: relative; z-index: 3; }
 
 /* ---- 01 Frontispiece ---------------------------------------------------- */
 
-/* The headline is centred in the padded box in both layers; the supporting
-   copy is pinned to the corners around it. That is what keeps the two halves
-   of the headline registered to each other. */
-.frontispiece {
-  display: grid;
-  align-content: center;
+/*
+  The frontispiece composition.
+
+  Every element is positioned against the viewport rather than laid out in the
+  stage, so the two halves of the headline can live in different layers and
+  still hold their diagonal: "Websites" set left at 30% and passing behind the
+  volume, "worth keeping." set right at 53% and passing in front of it.
+*/
+.frontispiece { display: block; }
+
+.kicker,
+.frontispiece__deck,
+.frontispiece__open {
+  position: fixed;
+  z-index: 4;
 }
 
-/* Absolute children resolve against the padding box, so the frame is restated
-   here rather than inherited from the stage padding. */
 .kicker {
-  position: absolute;
-  top: calc(var(--masthead) + 12px);
-  left: var(--gutter);
+  top: clamp(118px, 17vh, 160px);
+  left: var(--hero-gutter);
   max-width: 34ch;
+  margin: 0;
+  font-size: 0.61rem;
+  font-weight: 650;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
   opacity: 0.7;
 }
 
-.frontispiece__title,
-.behind-type__block {
-  margin: 0;
+.frontispiece__title { margin: 0; }
+
+.line {
+  position: fixed;
+  left: 0;
+  right: 0;
+  display: block;
+  padding: 0 var(--hero-gutter);
   font-family: var(--serif);
   font-variation-settings: "opsz" 96;
   font-size: var(--display-xl);
   font-weight: 420;
-  line-height: 0.86;
-  letter-spacing: -0.045em;
-}
-
-.frontispiece__title .line {
-  display: block;
-  /* The volume is rendered between these two lines, so the upper line reads
-     behind the book and the lower one in front of it. */
+  line-height: 0.79;
+  letter-spacing: -0.075em;
+  white-space: nowrap;
   will-change: transform, opacity;
 }
 
-.line--upper { position: relative; z-index: 0; margin-left: -0.02em; }
+/* Hangs a little further left than the gutter, so the headline reads as set
+   into the page rather than boxed by it. */
+.line--upper {
+  top: 30%;
+  z-index: 0;
+  padding-left: 20px;
+  text-align: left;
+}
 
 .line--lower {
-  position: relative;
+  top: 53%;
   z-index: 4;
-  margin-left: clamp(0px, 12vw, 260px);
-  line-height: 1.06;
-  padding-bottom: 0.08em;
+  padding-right: clamp(24px, 7.4vw, 116px);
+  text-align: right;
 }
 
 .line--lower em {
+  display: inline-block;
+  padding-bottom: 0.08em;
   font-style: italic;
-  font-variation-settings: "opsz" 96;
-  letter-spacing: -0.03em;
+  line-height: 1.08;
 }
 
 .frontispiece__deck {
-  position: absolute;
-  left: var(--gutter);
-  bottom: clamp(78px, 11vh, 118px);
-  max-width: 30ch;
+  left: var(--hero-gutter);
+  bottom: clamp(70px, 10vh, 108px);
+  width: min(350px, calc(100vw - 48px));
+  margin: 0;
   font-family: var(--serif);
   font-variation-settings: "opsz" 14;
-  font-size: clamp(1rem, 1.25vw, 1.24rem);
-  line-height: 1.5;
+  font-size: clamp(0.86rem, 1vw, 1rem);
+  line-height: 1.55;
   color: var(--fg-soft);
 }
 
 .frontispiece__open {
-  position: absolute;
-  right: var(--gutter);
-  bottom: clamp(78px, 11vh, 118px);
-  display: inline-flex;
+  right: var(--hero-gutter);
+  bottom: clamp(70px, 10vh, 108px);
+  display: flex;
   align-items: center;
   gap: 14px;
-  font-size: 0.66rem;
-  font-weight: 550;
-  letter-spacing: 0.2em;
+  font-size: 0.61rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   opacity: 0.72;
+  pointer-events: auto;
 }
 
 .frontispiece__open svg {
@@ -1373,11 +1385,7 @@ main { position: relative; z-index: 3; }
   .nav > a:not(.nav__cta) { font-size: 1rem; letter-spacing: 0.14em; }
   .nav__volume { display: none; }
 
-  .frontispiece__title,
-  .behind-type__block { line-height: 0.94; }
-  .line--lower { margin-left: 0; }
-  .frontispiece__deck { max-width: 24ch; font-size: 0.94rem; bottom: 96px; }
-  .frontispiece__open { bottom: 56px; }
+  .frontispiece__deck { width: min(300px, calc(100vw - 40px)); }
 
   .works { grid-template-columns: 1fr; grid-template-rows: 1fr auto auto; }
   .works__meta,
@@ -1403,6 +1411,43 @@ main { position: relative; z-index: 3; }
   .volume__sheet { grid-column: 1; grid-row: 2; max-width: none; }
   .volume__facts { grid-template-columns: 1fr 1fr; }
   .volume__columns { grid-template-columns: 1fr; gap: 16px; }
+}
+
+/*
+  Narrow viewports.
+
+  The desktop headline is set nowrap and full bleed, which at phone widths
+  slices "Websites" down to its first and last letters. Here the two lines
+  wrap and stack against the left margin instead, and the display token is
+  sized so the first line still fits on one line. The layering is unchanged:
+  the volume still passes between them.
+*/
+@media (max-width: 767px) {
+  :root {
+    --display-xl: clamp(3.4rem, 19vw, 6.4rem);
+    --display-lg: clamp(3.4rem, 15vw, 6rem);
+  }
+
+  .line {
+    padding: 0 var(--hero-gutter);
+    white-space: normal;
+    text-align: left;
+  }
+
+  .line--upper { top: 23%; padding-left: var(--hero-gutter); }
+  .line--lower { top: 37%; padding-right: var(--hero-gutter); }
+  .line--lower em { padding-bottom: 0.04em; }
+}
+
+/* Short laptop screens: the diagonal needs pulling up or the two lines and the
+   supporting copy collide. */
+@media (max-height: 720px) and (min-width: 768px) {
+  .kicker { top: 112px; }
+  .line--upper { top: 26%; }
+  .line--lower { top: 50%; }
+  .frontispiece__deck,
+  .frontispiece__open { bottom: 58px; }
+  .ledger { bottom: 18px; }
 }
 
 @media (max-width: 560px) {
@@ -1448,7 +1493,7 @@ main { position: relative; z-index: 3; }
 .reduced-motion .rail,
 .reduced-motion .process__step,
 .reduced-motion .binding__lede,
-.reduced-motion .line:not(.line--ghost) {
+.reduced-motion .line {
   opacity: 1 !important;
   transform: none !important;
 }
