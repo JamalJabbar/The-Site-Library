@@ -1,6 +1,6 @@
 @import "@fontsource-variable/bodoni-moda/standard.css";
 @import "@fontsource-variable/bodoni-moda/standard-italic.css";
-@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/manrope/wght.css";
 
 /* ==========================================================================
    Design system
@@ -27,7 +27,7 @@
   --line: rgba(27, 23, 18, 0.18);
 
   --serif: "Bodoni Moda Variable", "Bodoni Moda", Didot, Georgia, serif;
-  --grotesk: "Geist Variable", "Geist", "Helvetica Neue", Arial, sans-serif;
+  --grotesk: "Manrope Variable", Manrope, "Helvetica Neue", Arial, sans-serif;
 
   --display-xl: clamp(4rem, 11.4vw, 11.5rem);
   --display-lg: clamp(2.9rem, 7.4vw, 6.8rem);

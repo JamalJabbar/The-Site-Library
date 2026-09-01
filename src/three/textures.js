@@ -102,7 +102,7 @@ function serif(size, weight = 500, italic = false) {
 }
 
 function grotesk(size, weight = 600) {
-  return `${weight} ${size}px "Geist Variable", "Geist", "Helvetica Neue", Arial, sans-serif`;
+  return `${weight} ${size}px "Manrope Variable", Manrope, "Helvetica Neue", Arial, sans-serif`;
 }
 
 /* ------------------------------------------------------------------ *

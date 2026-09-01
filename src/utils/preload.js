@@ -14,8 +14,8 @@ const FONT_FACES = [
   '420 96px "Bodoni Moda Variable"',
   '500 96px "Bodoni Moda Variable"',
   'italic 420 96px "Bodoni Moda Variable"',
-  '550 16px "Geist Variable"',
-  '600 16px "Geist Variable"'
+  '550 16px "Manrope Variable"',
+  '600 16px "Manrope Variable"'
 ];
 
 export function createLoader(root, { reduceMotion } = {}) {
