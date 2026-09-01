@@ -1,5 +1,5 @@
-@import "@fontsource-variable/bodoni-moda/standard.css";
-@import "@fontsource-variable/bodoni-moda/standard-italic.css";
+@import "@fontsource-variable/bodoni-moda/wght.css";
+@import "@fontsource-variable/bodoni-moda/wght-italic.css";
 @import "@fontsource-variable/manrope/wght.css";
 
 /* ==========================================================================
@@ -287,7 +287,6 @@ button {
 
 .nav__volume {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 11;
   font-size: 0.86rem;
   font-style: italic;
   letter-spacing: 0.02em;
@@ -469,7 +468,6 @@ main { position: relative; z-index: 3; }
   display: block;
   padding: 0 var(--hero-gutter);
   font-family: var(--serif);
-  font-variation-settings: "opsz" 96;
   font-size: var(--display-xl);
   font-weight: 420;
   line-height: 0.79;
@@ -506,8 +504,6 @@ main { position: relative; z-index: 3; }
   bottom: clamp(70px, 10vh, 108px);
   width: min(350px, calc(100vw - 48px));
   margin: 0;
-  font-family: var(--serif);
-  font-variation-settings: "opsz" 14;
   font-size: clamp(0.86rem, 1vw, 1rem);
   line-height: 1.55;
   color: var(--fg-soft);
@@ -552,7 +548,6 @@ main { position: relative; z-index: 3; }
 
 .caption--room {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 40;
   font-size: clamp(1.5rem, 3.1vw, 2.7rem);
   font-style: italic;
   line-height: 1.2;
@@ -564,7 +559,6 @@ main { position: relative; z-index: 3; }
 
 .caption--collection strong {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 40;
   font-size: clamp(1.4rem, 2.7vw, 2.4rem);
   font-weight: 420;
   line-height: 1.22;
@@ -594,7 +588,6 @@ main { position: relative; z-index: 3; }
 .works__title {
   margin: 14px 0 6px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 48;
   font-size: clamp(1.7rem, 3.1vw, 2.9rem);
   font-weight: 420;
   line-height: 1.06;
@@ -603,7 +596,6 @@ main { position: relative; z-index: 3; }
 
 .works__industry {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 14;
   font-size: 1rem;
   font-style: italic;
   color: var(--fg-soft);
@@ -650,7 +642,6 @@ main { position: relative; z-index: 3; }
 
 .works__reserved strong {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 40;
   font-size: clamp(1.4rem, 2.5vw, 2.2rem);
   font-weight: 420;
   line-height: 1.16;
@@ -714,7 +705,6 @@ main { position: relative; z-index: 3; }
 .studio__lede h2,
 .commission__body h2 {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 88;
   font-size: var(--display-md);
   font-weight: 420;
   line-height: 0.96;
@@ -725,7 +715,6 @@ main { position: relative; z-index: 3; }
   max-width: 34ch;
   margin-top: 22px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 14;
   font-size: 1.06rem;
   line-height: 1.55;
   color: var(--fg-soft);
@@ -751,7 +740,6 @@ main { position: relative; z-index: 3; }
 
 .catalogue__index {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 30;
   font-size: 1.5rem;
   font-weight: 420;
   letter-spacing: 0;
@@ -771,7 +759,6 @@ main { position: relative; z-index: 3; }
 .catalogue p {
   margin-top: 6px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 13;
   font-size: 0.98rem;
   color: var(--fg-soft);
 }
@@ -791,7 +778,6 @@ main { position: relative; z-index: 3; }
   max-width: 32ch;
   margin-top: 20px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 14;
   font-size: 1.02rem;
   color: var(--fg-soft);
 }
@@ -814,7 +800,6 @@ main { position: relative; z-index: 3; }
 
 .process__step span {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 26;
   font-size: 1.28rem;
   color: var(--accent);
 }
@@ -830,7 +815,6 @@ main { position: relative; z-index: 3; }
 .process__step p {
   margin-top: 5px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 13;
   font-size: 0.95rem;
   color: var(--fg-soft);
 }
@@ -852,7 +836,6 @@ main { position: relative; z-index: 3; }
 
 .studio__lead {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 15;
   font-size: 1.08rem;
   line-height: 1.55;
   color: var(--fg-soft);
@@ -864,7 +847,6 @@ main { position: relative; z-index: 3; }
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
   font-family: var(--serif);
-  font-variation-settings: "opsz" 40;
   font-size: clamp(1.2rem, 1.9vw, 1.7rem);
   font-style: italic;
   line-height: 1.28;
@@ -890,7 +872,6 @@ main { position: relative; z-index: 3; }
 
 .studio__facts dd {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 14;
   font-size: 1rem;
 }
 
@@ -913,7 +894,6 @@ main { position: relative; z-index: 3; }
 .commission__ask {
   margin-top: 22px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 16;
   font-size: 1.14rem;
   font-style: italic;
   color: var(--fg-soft);
@@ -953,7 +933,6 @@ main { position: relative; z-index: 3; }
   display: block;
   margin-top: 22px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 14;
   font-size: 1rem;
   border-bottom: 1px solid var(--hairline);
   width: fit-content;
@@ -1031,7 +1010,6 @@ main { position: relative; z-index: 3; }
 .volume__sheet h2 {
   margin: 16px 0 0;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 72;
   font-size: clamp(2rem, 3.6vw, 3.4rem);
   font-weight: 420;
   line-height: 1.02;
@@ -1041,7 +1019,6 @@ main { position: relative; z-index: 3; }
 .volume__premise {
   margin-top: 18px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 22;
   font-size: clamp(1.05rem, 1.5vw, 1.32rem);
   font-style: italic;
   line-height: 1.42;
@@ -1071,13 +1048,11 @@ main { position: relative; z-index: 3; }
 .volume__facts dd {
   margin-top: 7px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 13;
   font-size: 0.95rem;
 }
 
 .volume__description {
   font-family: var(--serif);
-  font-variation-settings: "opsz" 13;
   font-size: 1rem;
   line-height: 1.6;
   color: rgba(248, 244, 235, 0.76);
@@ -1094,7 +1069,6 @@ main { position: relative; z-index: 3; }
 .volume__outcome p {
   margin-top: 8px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 13;
   font-size: 0.94rem;
   line-height: 1.5;
   color: rgba(248, 244, 235, 0.78);
@@ -1149,7 +1123,6 @@ main { position: relative; z-index: 3; }
 .edition__masthead h2 {
   margin: 20px 0 18px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 96;
   font-size: var(--display-lg);
   font-weight: 420;
   line-height: 0.92;
@@ -1178,7 +1151,6 @@ main { position: relative; z-index: 3; }
 .edition__item h3 {
   margin: 20px 0 4px;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 32;
   font-size: 1.5rem;
   font-weight: 420;
   letter-spacing: -0.02em;
@@ -1280,7 +1252,6 @@ main { position: relative; z-index: 3; }
 .loader__monogram {
   position: absolute;
   font-family: var(--serif);
-  font-variation-settings: "opsz" 30;
   font-size: 1.55rem;
   font-weight: 500;
   letter-spacing: 0.14em;
