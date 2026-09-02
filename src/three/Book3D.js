@@ -66,6 +66,11 @@ export class Book3D extends THREE.Group {
     this.lift = 0;
     this.presentYaw = 0;
     this.presentPitch = 0;
+    // One-time entrance offsets are composed with the live pointer response.
+    // Keeping them separate prevents the render loop from overwriting the
+    // hero's opening turn before it reaches the screen.
+    this.introYaw = 0;
+    this.introPitch = 0;
 
     this.visual = new THREE.Group();
     this.visual.name = `${this.name}:visual`;
@@ -469,8 +474,8 @@ export class Book3D extends THREE.Group {
     this.presentPitch += (targetPitch - this.presentPitch) * damping;
     this.lift += (targetLift - this.lift) * damping;
 
-    this.visual.rotation.y = this.presentYaw;
-    this.visual.rotation.x = this.presentPitch;
+    this.visual.rotation.y = this.presentYaw + this.introYaw;
+    this.visual.rotation.x = this.presentPitch + this.introPitch;
     this.visual.position.z = this.lift;
 
     // Foil reads brighter as the volume comes forward because it meets more of

@@ -45,6 +45,51 @@ let pointerEvent = null;
 let raycastQueued = false;
 let cursorEnabled = false;
 let diagnosticsClock = 0;
+let heroIntro = null;
+let heroIntroPlayed = false;
+
+/**
+ * Prime the opening pose while the loader still covers the page, then return
+ * a paused, finite timeline. Live pointer motion owns presentYaw/presentPitch;
+ * these additive intro offsets keep the opening turn from being overwritten by
+ * the render loop.
+ */
+function createHeroIntro(targetWorld) {
+  if (reduceMotion) return null;
+
+  document.documentElement.classList.add("hero-intro-pending");
+  gsap.set(targetWorld.heroBook.scale, { x: 1.075, y: 1.075, z: 1.075 });
+  gsap.set(targetWorld.heroBook, { introYaw: 0.16, introPitch: 0.05 });
+  gsap.set([".line--upper", ".line--lower"], { yPercent: 46, autoAlpha: 0 });
+  gsap.set(".frontispiece__deck", { y: 20, autoAlpha: 0 });
+  gsap.set([".kicker", ".frontispiece__open"], { autoAlpha: 0 });
+
+  return gsap.timeline({
+    paused: true,
+    defaults: { ease: "power3.out" },
+    onComplete: () => {
+      document.documentElement.classList.remove("hero-intro-pending");
+      heroIntro?.kill();
+      heroIntro = null;
+    }
+  })
+    .to(targetWorld.heroBook.scale,
+      { x: 1, y: 1, z: 1, duration: 1.4 }, 0)
+    .to(targetWorld.heroBook,
+      { introYaw: 0, introPitch: 0, duration: 1.4 }, 0)
+    .to([".line--upper", ".line--lower"],
+      { yPercent: 0, autoAlpha: 1, duration: 1.15, stagger: 0.1 }, 0.12)
+    .to(".frontispiece__deck",
+      { y: 0, autoAlpha: 1, duration: 0.85 }, 0.5)
+    .to(".kicker", { autoAlpha: 0.7, duration: 0.7 }, 0.82)
+    .to(".frontispiece__open", { autoAlpha: 0.72, duration: 0.7 }, 0.96);
+}
+
+function playHeroIntroOnce() {
+  if (!heroIntro || heroIntroPlayed) return;
+  heroIntroPlayed = true;
+  heroIntro.play(0);
+}
 
 /* ------------------------------------------------------------------ *
  * Interaction
@@ -266,6 +311,10 @@ async function boot() {
   });
   endWorld();
 
+  // Build and pause the complete entrance before any asynchronous collection
+  // work. When the loader lifts, every start value is already in place.
+  heroIntro = createHeroIntro(world);
+
   conductor = createConductor({
     reduceMotion,
     onProgress: (value) => ui.setProgress(value),
@@ -341,24 +390,7 @@ async function boot() {
 
   await dismiss();
   document.documentElement.classList.add("ready");
-
-  if (!reduceMotion) {
-    // The volume settles into its hero pose; the type resolves after it.
-    gsap.timeline({ defaults: { ease: "power3.out" } })
-      .fromTo(world.heroBook.scale,
-        { x: 1.075, y: 1.075, z: 1.075 },
-        { x: 1, y: 1, z: 1, duration: 1.4 }, 0)
-      .fromTo(world.heroBook.visual.rotation,
-        { y: 0.16, x: 0.05 },
-        { y: 0, x: 0, duration: 1.4 }, 0)
-      .fromTo([".line--upper", ".line--lower"],
-        { yPercent: 46, opacity: 0 },
-        { yPercent: 0, opacity: 1, duration: 1.15, stagger: 0.1 }, 0.12)
-      .fromTo(".frontispiece__deck",
-        { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.85 }, 0.5)
-      .fromTo(".kicker", { opacity: 0 }, { opacity: 0.7, duration: 0.7 }, 0.82)
-      .fromTo(".frontispiece__open", { opacity: 0 }, { opacity: 0.72, duration: 0.7 }, 0.96);
-  }
+  playHeroIntroOnce();
 }
 
 /* ------------------------------------------------------------------ *
@@ -406,6 +438,9 @@ window.addEventListener("pagehide", () => {
 
 boot().catch((error) => {
   console.error("The Site Library could not open", error);
+  heroIntro?.kill();
+  heroIntro = null;
+  document.documentElement.classList.remove("hero-intro-pending");
   ui.buildEdition("The live archive could not open. Every volume is set out below.");
   loaderRoot.hidden = true;
 });

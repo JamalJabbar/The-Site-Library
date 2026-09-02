@@ -607,12 +607,29 @@ main { position: relative; z-index: 3; }
   width: 10px; height: 20px;
   stroke: currentColor;
   stroke-width: 1.2;
-  animation: drift 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* JS adds this only after it has also set the exact transform values. The CSS
+   hold covers the first paint; GSAP owns the measured entrance from there. */
+.hero-intro-pending .line--upper,
+.hero-intro-pending .line--lower,
+.hero-intro-pending .frontispiece__deck,
+.hero-intro-pending .kicker,
+.hero-intro-pending .frontispiece__open {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* The cue starts with the rest of the hero, after the loader, and resolves
+   once. It is an entrance beat rather than a perpetual attention loop. */
+.ready .frontispiece__open svg {
+  animation: drift 1.4s cubic-bezier(0.4, 0, 0.2, 1) 1 both;
 }
 
 @keyframes drift {
-  0%, 100% { transform: translateY(-2px); opacity: 0.5; }
-  50% { transform: translateY(3px); opacity: 1; }
+  0% { transform: translateY(-2px); opacity: 0.5; }
+  55% { transform: translateY(3px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
 /* ---- 02 Into the stacks -------------------------------------------------- */

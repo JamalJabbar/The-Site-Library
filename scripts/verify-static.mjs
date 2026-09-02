@@ -226,6 +226,15 @@ check(/classList\.toggle\("reduced-motion"/.test(main),
 check(!/addEventListener\(\s*["']scroll["']/.test(main + world),
   "Scroll must reach the world through the conductor, not a raw listener");
 
+// The hero entrance is primed under the loader, played from one guarded call,
+// and never asks either GSAP or CSS to repeat it.
+check(main.includes("paused: true") && main.includes("playHeroIntroOnce()"),
+  "The hero entrance must be ready before the loader dismisses and play through its one-shot guard");
+check(main.indexOf("heroIntro = createHeroIntro(world)") < main.lastIndexOf("await dismiss()"),
+  "The hero entrance must be created before the preloader is dismissed");
+check(!/\.ready \.frontispiece__open svg[\s\S]*?infinite/.test(css),
+  "The hero's load-time arrow animation must not repeat");
+
 const visible = html.replace(/<!--[\s\S]*?-->/g, "");
 check(!visible.includes("—") && !visible.includes("–"),
   "Visible copy contains a long dash");
