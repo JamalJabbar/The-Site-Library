@@ -1,458 +1,411 @@
-import "@fontsource-variable/bodoni-moda/wght.css";
-import "@fontsource-variable/bodoni-moda/wght-italic.css";
-import "@fontsource-variable/manrope/wght.css";
 import "./style.css";
 
-import * as THREE from "three";
-import Lenis from "lenis";
-import { PROJECTS, HERO_VOLUME } from "./data/projects.js";
+import { PROJECTS, HERO_VOLUME, SHELF } from "./data/projects.js";
 import { CHAPTERS } from "./data/chapters.js";
-import { LibraryWorld, supportsWebGL } from "./three/world.js";
-import { connectLoader } from "./utils/preload.js";
-import { gsap, ScrollTrigger, setupScrollStory } from "./animation/scroll.js";
-import { createInspectionController } from "./animation/inspection.js";
+import { LibraryWorld, supportsWebGL, detectQuality } from "./three/World.js";
+import { createConductor, gsap, ScrollTrigger } from "./animation/conductor.js";
+import { createInspection } from "./animation/inspection.js";
+import { createInterface } from "./ui/interface.js";
+import { createLoader } from "./utils/preload.js";
 
-const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-const finePointerQuery = window.matchMedia("(pointer: fine)");
-const searchParams = new URLSearchParams(window.location.search);
-const forcedFallback = searchParams.has("fallback");
-const diagnosticsEnabled = searchParams.has("diagnostics");
-const debugEnabled = searchParams.has("debug") || diagnosticsEnabled;
+/**
+ * The Site Library.
+ *
+ * One renderer, one scroll conductor, one state machine. Scroll owns the
+ * journey; pointer and keyboard own local response; neither is ever allowed to
+ * drive the other's transforms.
+ */
+
+const params = new URLSearchParams(window.location.search);
+const forceEdition = params.has("edition");
+const diagnostics = params.has("diagnostics");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// The stylesheet reveals several blocks through scroll choreography that this
+// module skips under reduced motion. Publishing the decision as a class means
+// the two can never disagree and leave copy stranded at zero opacity.
+document.documentElement.classList.toggle("reduced-motion", reduceMotion);
+
+const canvas = document.querySelector("#world");
+const loaderRoot = document.querySelector("[data-loader]");
 
 if (!window.location.hash) {
   history.scrollRestoration = "manual";
   window.scrollTo(0, 0);
 }
 
-const state = {
-  journey: 0,
-  library: 0,
-  reading: 0,
-  binding: 0,
-  studio: 0,
-  commission: 0,
-  commissionHover: 0,
-  reduceMotion: reduceMotionQuery.matches,
-  elapsed: 0
-};
-
-const elements = {
-  canvas: document.querySelector("#world-canvas"),
-  loader: document.querySelector("[data-loader]"),
-  loaderPercentage: document.querySelector("[data-loader-percentage]"),
-  loaderBar: document.querySelector("[data-loader-bar]"),
-  loaderStatus: document.querySelector("[data-loader-status]"),
-  chapterCurrent: document.querySelector("[data-chapter-current]"),
-  chapterLabel: document.querySelector("[data-chapter-label]"),
-  projectButtons: document.querySelector("[data-project-buttons]"),
-  metaVolume: document.querySelector("[data-meta-volume]"),
-  metaTitle: document.querySelector("[data-meta-title]"),
-  metaCategory: document.querySelector("[data-meta-category]"),
-  metaYear: document.querySelector("[data-meta-year]"),
-  openFocusedProject: document.querySelector("[data-open-focused-project]"),
-  panel: document.querySelector("[data-project-panel]"),
-  closeProject: document.querySelector("[data-close-project]"),
-  liveStatus: document.querySelector("[data-live-status]"),
-  fallback: document.querySelector("[data-webgl-fallback]"),
-  fallbackMessage: document.querySelector("[data-fallback-message]"),
-  fallbackProjects: document.querySelector("[data-fallback-projects]"),
-  cursor: document.querySelector("[data-cursor]"),
-  cursorLabel: document.querySelector("[data-cursor] span"),
-  menuToggle: document.querySelector(".menu-toggle"),
-  debugPanel: document.querySelector("[data-debug-panel]"),
-  debugOutput: document.querySelector("[data-debug-output]"),
-  commissionCta: document.querySelector("[data-commission-cta]"),
-  mobileInspectionCover: document.querySelector("[data-mobile-inspection-cover]")
-};
+const ui = createInterface({ projects: PROJECTS, reduceMotion });
 
 let world = null;
-let lenis = null;
-let scrollStory = null;
+let conductor = null;
 let inspection = null;
-let focusedIndex = 0;
+let smooth = 0;
+let lastTime = -1;
 let pointerEvent = null;
-let raycastPending = false;
-let lastDebugUpdate = 0;
-let resizeWidth = window.innerWidth;
+let raycastQueued = false;
+let cursorEnabled = false;
+let diagnosticsClock = 0;
 
-function buildAccessibleProjectControls() {
-  const fragment = document.createDocumentFragment();
-  PROJECTS.forEach((project, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "project-focus-button";
-    button.dataset.projectFocus = String(index);
-    button.setAttribute("aria-label", `View ${project.title} project`);
-    const label = document.createElement("span");
-    label.textContent = `${project.volume} / ${project.title}`;
-    button.append(label);
-    fragment.append(button);
-  });
-  elements.projectButtons.append(fragment);
-}
+/* ------------------------------------------------------------------ *
+ * Interaction
+ * ------------------------------------------------------------------ */
 
-function buildFallback() {
-  const fragment = document.createDocumentFragment();
-  PROJECTS.forEach((project) => {
-    const article = document.createElement("article");
-    article.className = "fallback-project";
-    article.style.setProperty("--fallback-accent", project.palette.primary);
-    const meta = document.createElement("span");
-    meta.textContent = `Volume ${project.volume} / ${project.year}`;
-    const title = document.createElement("h3");
-    title.textContent = project.title;
-    const description = document.createElement("p");
-    description.textContent = project.premise;
-    const link = document.createElement("a");
-    link.href = project.url;
-    link.textContent = "View project";
-    link.setAttribute("aria-label", `View ${project.title} project`);
-    article.append(meta, title, description, link);
-    fragment.append(article);
-  });
-  elements.fallbackProjects.append(fragment);
-}
-
-function showFallback(message) {
-  if (!message) {
-    document.documentElement.classList.remove("webgl-failed");
-    elements.fallback.hidden = true;
-    return;
-  }
-  elements.fallbackMessage.textContent = message;
-  elements.fallback.hidden = false;
-  document.documentElement.classList.add("webgl-failed");
-}
-
-function updateChapter(index, chapter) {
-  elements.chapterCurrent.textContent = chapter.number;
-  elements.chapterLabel.textContent = chapter.label;
-  document.querySelectorAll(".primary-navigation a[href^='#']").forEach((link) => {
-    const matches = link.getAttribute("href") === `#${chapter.id}`;
-    if (matches) link.setAttribute("aria-current", "page");
-    else link.removeAttribute("aria-current");
-  });
-  if (index !== 2) document.documentElement.classList.remove("cursor-book");
-}
-
-function updateProjectMeta(index, immediate = false) {
-  if (index < 0 || !PROJECTS[index] || index === focusedIndex && !immediate) return;
-  focusedIndex = index;
-  const project = PROJECTS[index];
-  const targets = [elements.metaVolume, elements.metaTitle, elements.metaCategory, elements.metaYear];
-  const apply = () => {
-    elements.metaVolume.textContent = `${project.volume} / ${PROJECTS.length.toString().padStart(2, "0")}`;
-    elements.metaTitle.textContent = project.title;
-    elements.metaCategory.textContent = project.industry;
-    elements.metaYear.textContent = project.year;
-  };
-  world?.setFocusedProject(index);
-  if (immediate || state.reduceMotion) {
-    apply();
-    return;
-  }
-  gsap.timeline()
-    .to(targets, { y: -12, opacity: 0, duration: 0.18, ease: "power2.in" })
-    .add(apply)
-    .set(targets, { y: 14 })
-    .to(targets, { y: 0, opacity: 1, duration: 0.32, stagger: 0.025, ease: "power3.out" });
-}
-
-function populateInspection(project) {
-  const index = PROJECTS.indexOf(project);
-  elements.panel.querySelector("[data-panel-volume]").textContent = `Volume ${project.volume} / ${PROJECTS.length.toString().padStart(2, "0")}`;
-  elements.panel.querySelector("[data-panel-title]").textContent = project.title;
-  elements.panel.querySelector("[data-panel-client]").textContent = project.client;
-  elements.panel.querySelector("[data-panel-year]").textContent = project.year;
-  elements.panel.querySelector("[data-panel-industry]").textContent = project.industry;
-  elements.panel.querySelector("[data-panel-premise]").textContent = project.premise;
-  elements.panel.querySelector("[data-panel-description]").textContent = project.description;
-  elements.panel.querySelector("[data-panel-services]").textContent = project.services.join(" / ");
-  elements.panel.querySelector("[data-panel-technology]").textContent = project.technology.join(" / ");
-  elements.panel.querySelector("[data-panel-outcome]").textContent = project.outcome;
-  const url = elements.panel.querySelector("[data-panel-url]");
-  url.href = project.url;
-  url.setAttribute("aria-label", `Visit ${project.title} live site`);
-  elements.liveStatus.textContent = `${project.title} project opened. Volume ${index + 1} of ${PROJECTS.length}.`;
-}
-
-function scrollToProject(index) {
-  const next = THREE.MathUtils.clamp(index, 0, PROJECTS.length - 1);
-  const trigger = ScrollTrigger.getById("library-traversal");
-  if (!trigger || state.reduceMotion) {
-    state.library = 0.12 + (next / (PROJECTS.length - 1)) * 0.8;
-    updateProjectMeta(next, true);
-    return;
-  }
-  const progress = 0.12 + (next / (PROJECTS.length - 1)) * 0.8;
-  const target = trigger.start + (trigger.end - trigger.start) * progress;
-  lenis?.scrollTo(target, { duration: 0.82, force: true });
-}
-
-function openProject(index, origin) {
+function openVolume(index, source) {
   const book = world?.projectBooks[index];
-  if (!book || inspection?.current) return;
-  const source = book.artwork.front.image;
-  const cover = elements.mobileInspectionCover;
-  if (source && cover) {
-    cover.width = source.width;
-    cover.height = source.height;
-    cover.getContext("2d")?.drawImage(source, 0, 0);
-  }
-  updateProjectMeta(index, true);
-  inspection.open(book, origin);
+  if (!book || inspection?.current || inspection?.busy) return;
+  ui.setFocus(index);
+  inspection.open(book, source);
 }
 
-function attachProjectEvents() {
-  elements.projectButtons.querySelectorAll("[data-project-focus]").forEach((button) => {
-    const index = Number(button.dataset.projectFocus);
-    button.addEventListener("focus", () => scrollToProject(index));
-    button.addEventListener("click", () => {
-      if (focusedIndex !== index && !state.reduceMotion) {
-        scrollToProject(index);
-        gsap.delayedCall(0.72, () => openProject(index, button));
-      } else {
-        openProject(index, button);
-      }
+/**
+ * Scrolls the shelf so a volume sits at the compositional centre.
+ *
+ * The traverse is a straight rail between two authored slots, so the point on
+ * it that reads a volume is that volume's own place along the rail. Spacing
+ * follows the thickness of the bindings and the lean of the row, neither of
+ * which is regular, so stepping by index would stop between volumes.
+ */
+function bringVolumeIntoView(index) {
+  if (!conductor || !world) return Promise.resolve();
+  const anchors = conductor.state.anchors;
+  const first = SHELF.projectSlots[0].x;
+  const rail = SHELF.emptySlot.x - first;
+  const along = Math.abs(rail) < 1e-6
+    ? 0
+    : (SHELF.projectSlots[index].x - first) / rail;
+  const target = anchors[4] + (anchors[5] - anchors[4]) * along;
+  const y = conductor.scrollForProgress(target);
+  if (reduceMotion) {
+    window.scrollTo(0, y);
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    conductor.scrollTo(y, { duration: 0.85, onComplete: resolve });
+    window.setTimeout(resolve, 950);
+  });
+}
+
+function attachRail() {
+  ui.railButtons.forEach((button, index) => {
+    button.addEventListener("focus", () => {
+      if (inspection?.current) return;
+      bringVolumeIntoView(index);
+    });
+    button.addEventListener("click", async () => {
+      if (world.focusIndex !== index) await bringVolumeIntoView(index);
+      openVolume(index, button);
     });
   });
 
-  elements.openFocusedProject.addEventListener("click", () => {
-    openProject(focusedIndex, elements.openFocusedProject);
+  ui.el.openFocused.addEventListener("click", () => {
+    const index = world.focusIndex >= 0 ? world.focusIndex : 0;
+    openVolume(index, ui.el.openFocused);
   });
-  elements.closeProject.addEventListener("click", () => inspection?.close());
+
+  ui.el.panel.querySelector("[data-close-panel]")
+    .addEventListener("click", () => inspection?.close());
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && inspection?.current) {
+    if (inspection?.current || document.documentElement.classList.contains("menu-open")) return;
+    if (world.focusIndex < 0) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      const next = world.focusIndex + (event.key === "ArrowRight" ? 1 : -1);
+      if (next < 0 || next >= PROJECTS.length) return;
       event.preventDefault();
-      inspection.close();
-      return;
-    }
-    if (!document.documentElement.classList.contains("library-is-active") || inspection?.current) return;
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      scrollToProject(focusedIndex + 1);
-    }
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      scrollToProject(focusedIndex - 1);
+      bringVolumeIntoView(next);
     }
   });
 }
 
-function attachNavigation() {
-  document.querySelectorAll("a[href^='#']").forEach((link) => {
-    link.addEventListener("click", (event) => {
-      const target = document.querySelector(link.getAttribute("href"));
-      if (!target || state.reduceMotion || !lenis) return;
-      event.preventDefault();
-      lenis.scrollTo(target, { duration: 1.15 });
-      document.documentElement.classList.remove("menu-is-open");
-      elements.menuToggle.setAttribute("aria-expanded", "false");
-    });
-  });
+function attachPointer() {
+  cursorEnabled = ui.initCursor();
 
-  elements.menuToggle.addEventListener("click", () => {
-    const open = !document.documentElement.classList.contains("menu-is-open");
-    document.documentElement.classList.toggle("menu-is-open", open);
-    elements.menuToggle.setAttribute("aria-expanded", String(open));
-    elements.menuToggle.textContent = open ? "Close" : "Menu";
-  });
-}
-
-function attachPointerEvents() {
-  if (!finePointerQuery.matches) return;
-  const setCursorX = gsap.quickSetter(elements.cursor, "x", "px");
-  const setCursorY = gsap.quickSetter(elements.cursor, "y", "px");
   document.addEventListener("pointermove", (event) => {
+    if (event.pointerType !== "mouse") return;
     world?.setPointer(event.clientX, event.clientY);
-    setCursorX(event.clientX);
-    setCursorY(event.clientY);
-    document.documentElement.classList.add("cursor-visible");
+    if (cursorEnabled) ui.moveCursor(event.clientX, event.clientY);
     pointerEvent = event;
-    raycastPending = true;
+    raycastQueued = true;
   }, { passive: true });
 
   document.addEventListener("pointerleave", () => {
-    document.documentElement.classList.remove("cursor-visible", "cursor-book");
-    world?.setHoveredBook(null);
+    ui.hideCursor();
+    world?.clearPointer();
+    world?.setHovered(null);
   });
 
   document.addEventListener("click", (event) => {
-    if (event.target.closest("a, button") || inspection?.current) return;
+    if (event.target.closest("a, button")) return;
+    if (inspection?.current || inspection?.busy) return;
     const book = world?.raycast(event.clientX, event.clientY);
-    if (book) openProject(book.userData.index, elements.projectButtons.querySelector(`[data-project-focus="${book.userData.index}"]`));
+    if (!book) return;
+    const index = book.userData.index;
+    openVolume(index, ui.railButtons[index]);
+  });
+
+  // Tap-to-open on touch, with the rail as the reliable alternative.
+  canvas.addEventListener("pointerup", (event) => {
+    if (event.pointerType === "mouse" || inspection?.current) return;
+    world?.setPointer(event.clientX, event.clientY);
+    const book = world?.raycast(event.clientX, event.clientY);
+    if (book) openVolume(book.userData.index, ui.railButtons[book.userData.index]);
   });
 }
 
-function processPointerRaycast() {
-  if (!raycastPending || !pointerEvent || !world || inspection?.current) return;
-  raycastPending = false;
-  const overInterface = pointerEvent.target.closest("a, button, .project-meta, .site-header");
-  const book = overInterface ? null : world.raycast(pointerEvent.clientX, pointerEvent.clientY);
-  world.setHoveredBook(book);
-  document.documentElement.classList.toggle("cursor-book", Boolean(book));
-  elements.cursorLabel.textContent = book ? "View" : "";
+function processHover() {
+  if (!raycastQueued || !pointerEvent || !world) return;
+  raycastQueued = false;
+
+  if (inspection?.current) {
+    ui.setCursorLabel(pointerEvent.target.closest("a, button") ? "" : "Back");
+    return;
+  }
+  if (pointerEvent.target.closest("a, button")) {
+    world.setHovered(null);
+    ui.setCursorLabel("Open");
+    return;
+  }
+  const book = world.raycast(pointerEvent.clientX, pointerEvent.clientY);
+  world.setHovered(book);
+  ui.setCursorLabel(book ? "View" : "");
+  if (book) {
+    // The cursor picks up the volume's own foil, very slightly.
+    ui.el.cursor.style.color = book.project.palette.foil;
+  } else {
+    ui.el.cursor.style.color = "";
+  }
 }
 
-function attachResponsiveLifecycle() {
-  window.addEventListener("resize", () => {
-    const widthChanged = window.innerWidth !== resizeWidth;
-    const coarse = window.matchMedia("(pointer: coarse)").matches;
-    if (coarse && !widthChanged) return;
-    resizeWidth = window.innerWidth;
-    world?.resize();
-    scrollStory?.refresh();
-  }, { passive: true });
-
-  reduceMotionQuery.addEventListener("change", () => {
-    window.location.reload();
-  });
-}
-
-function attachCommissionInteraction() {
-  const setHover = (value) => gsap.to(state, {
-    commissionHover: value,
-    duration: state.reduceMotion ? 0 : 0.55,
-    ease: "power3.out",
-    overwrite: true
-  });
-  elements.commissionCta.addEventListener("pointerenter", () => setHover(1));
-  elements.commissionCta.addEventListener("pointerleave", () => setHover(0));
-  elements.commissionCta.addEventListener("focus", () => setHover(1));
-  elements.commissionCta.addEventListener("blur", () => setHover(0));
-}
-
-function setupDebug() {
-  if (!debugEnabled) return;
-  elements.debugPanel.hidden = !diagnosticsEnabled;
-  window.__TSL_DEBUG__ = {
-    state,
-    getStats: () => world?.getStats(),
-    getRestorationError: (index) => world?.getRestorationError(index),
-    projects: PROJECTS,
-    chapters: CHAPTERS,
-    forceFallback: () => showFallback("The 3D archive was disabled for fallback verification."),
-    restoreWorld: () => showFallback(null)
+function attachCommissionHover() {
+  const cta = ui.el.commissionCta;
+  // The closed volume lifts its board by about six degrees. Nothing more.
+  const proxy = { open: 0 };
+  const set = (value) => {
+    if (!world || reduceMotion) return;
+    gsap.to(proxy, {
+      open: value,
+      duration: 0.7,
+      ease: "power3.out",
+      overwrite: true,
+      onUpdate: () => world.heroBook.setCoverOpen(proxy.open)
+    });
   };
+  ["pointerenter", "focus"].forEach((type) => cta.addEventListener(type, () => set(0.34)));
+  ["pointerleave", "blur"].forEach((type) => cta.addEventListener(type, () => set(0)));
 }
 
-async function init() {
-  buildAccessibleProjectControls();
-  buildFallback();
-  attachNavigation();
+/* ------------------------------------------------------------------ *
+ * Frame
+ * ------------------------------------------------------------------ */
 
-  const manager = new THREE.LoadingManager();
-  manager.itemStart("bootstrap");
-  const loader = connectLoader(manager, {
-    root: elements.loader,
-    percentage: elements.loaderPercentage,
-    bar: elements.loaderBar,
-    status: elements.loaderStatus
-  });
-  const criticalLoads = loader.startCriticalLoads();
+function frame(time) {
+  const now = time * 1000;
+  const raw = lastTime < 0 ? 16.7 : now - lastTime;
+  const dt = Math.min(raw / 1000, 1 / 30);
+  lastTime = now;
 
-  if (!supportsWebGL() || forcedFallback) {
-    await criticalLoads;
-    manager.itemEnd("bootstrap");
-    showFallback(forcedFallback
-      ? "The static edition was requested. Every selected project remains available."
-      : "WebGL is unavailable. Every selected project remains available in this static edition.");
-    await loader.dismiss();
+  conductor.raf(now);
+
+  const exact = conductor.state.exact;
+  // Exact progress drives state; a damped copy drives the picture.
+  smooth = reduceMotion
+    ? exact
+    : smooth + (exact - smooth) * (1 - Math.exp(-7.5 * dt));
+  if (Math.abs(exact - smooth) < 0.00002) smooth = exact;
+  conductor.state.smooth = smooth;
+
+  processHover();
+
+  const channels = world.update(smooth, dt);
+  ui.setSurface(channels.ink);
+  ui.setBackdrop(channels.backdrop);
+  ui.setGrain(channels.grain);
+  world.render(dt);
+  world.samplePerformance(raw);
+
+  if (diagnostics && now - diagnosticsClock > 400) {
+    diagnosticsClock = now;
+    ui.el.diagnosticsOut.textContent = JSON.stringify(
+      { exact: Number(exact.toFixed(4)), smooth: Number(smooth.toFixed(4)), ...world.stats() },
+      null, 1
+    );
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Boot
+ * ------------------------------------------------------------------ */
+
+async function boot() {
+  const loader = createLoader(loaderRoot, { reduceMotion });
+  const { manager, loadFonts, step, dismiss } = loader;
+
+  manager.itemStart("boot");
+  await loadFonts();
+
+  if (!supportsWebGL() || forceEdition) {
+    ui.buildEdition(forceEdition
+      ? "The static edition was requested. Every volume is set out below."
+      : "This browser cannot open the 3D archive. Every volume is set out below.");
+    manager.itemEnd("boot");
+    await dismiss();
     return;
   }
 
-  await document.fonts.ready;
+  const quality = detectQuality();
+  const endWorld = step("world");
+
   world = new LibraryWorld({
-    canvas: elements.canvas,
-    manager,
+    canvas,
     projects: PROJECTS,
     heroVolume: HERO_VOLUME,
-    onFallback: (message) => showFallback(message),
-    onProjectFocus: (index) => updateProjectMeta(index)
+    quality,
+    reduceMotion,
+    onProjectFocus: (index) => ui.setFocus(index),
+    onContextLost: () => ui.buildEdition("The 3D archive stopped. Every volume is set out below.")
   });
-  manager.itemEnd("bootstrap");
+  endWorld();
 
-  if (!state.reduceMotion) {
-    lenis = new Lenis({
-      lerp: 0.08,
-      wheelMultiplier: 1,
-      smoothWheel: true
-    });
-    lenis.on("scroll", ScrollTrigger.update);
+  conductor = createConductor({
+    reduceMotion,
+    onProgress: (value) => ui.setProgress(value),
+    onChapter: (index, chapter) => ui.setChapter(index, chapter)
+  });
+
+  inspection = createInspection({
+    world,
+    conductor,
+    panel: ui.el.panel,
+    reduceMotion,
+    onOpen: (project) => ui.fillPanel(project),
+    onClose: (project) => {
+      ui.announceClose(project);
+      ui.setCursorLabel("");
+    }
+  });
+
+  ui.initMenu();
+  attachRail();
+  attachPointer();
+  attachCommissionHover();
+  if (diagnostics) {
+    ui.el.diagnostics.hidden = false;
+    window.__TSL__ = {
+      world, conductor, ui, gsap, projects: PROJECTS, chapters: CHAPTERS,
+      get inspection() { return inspection; },
+      /** Composes and draws one exact narrative position, without the ticker. */
+      step(t) {
+        world.setAnchors(conductor.measure());
+        smooth = t;
+        conductor.state.exact = t;
+        const channels = world.update(t, 1 / 60, true);
+        ui.setSurface(channels.ink);
+        ui.setBackdrop(channels.backdrop);
+        ui.setGrain(channels.grain);
+        world.render(1 / 60);
+        return world.stats();
+      },
+      /** Moves the document to a narrative position, the way a reader would. */
+      seek(t) {
+        const y = conductor.scrollForProgress(t);
+        conductor.lenis?.scrollTo(y, { immediate: true, force: true });
+        window.scrollTo(0, y);
+        ScrollTrigger.update();
+        return this.step(conductor.state.exact);
+      }
+    };
   }
+
+  // The first authored frame is composed before the bookplate lifts.
+  world.setAnchors(conductor.measure());
+  world.update(0, 1 / 60, true);
+  world.render(1 / 60);
+
+  // The collection streams in behind the loader, one volume per frame.
+  const endCollection = step("collection");
+  await world.loadCollection((project) => {
+    const end = step(`volume-${project.volume}`);
+    end();
+  });
+  endCollection();
+  manager.itemEnd("boot");
+
+  world.setAnchors(conductor.measure());
+  ScrollTrigger.refresh();
+  world.setAnchors(conductor.measure());
+  world.update(conductor.state.exact, 1 / 60, true);
+  world.render(1 / 60);
 
   gsap.ticker.lagSmoothing(0);
-  gsap.ticker.add((time) => {
-    lenis?.raf(time * 1000);
-    processPointerRaycast();
-    world?.render(state);
-    if (diagnosticsEnabled && time - lastDebugUpdate > 0.5) {
-      lastDebugUpdate = time;
-      elements.debugOutput.textContent = JSON.stringify({
-        state: {
-          journey: Number(state.journey.toFixed(3)),
-          library: Number(state.library.toFixed(3)),
-          reading: Number(state.reading.toFixed(3)),
-          binding: Number(state.binding.toFixed(3)),
-          studio: Number(state.studio.toFixed(3)),
-          commission: Number(state.commission.toFixed(3))
-        },
-        renderer: world.getStats()
-      }, null, 2);
-    }
-  });
+  gsap.ticker.add(frame);
 
-  inspection = createInspectionController({
-    world,
-    lenis,
-    overlay: elements.panel,
-    onOpen: (project) => {
-      populateInspection(project);
-      elements.cursorLabel.textContent = "Back";
-    },
-    onClose: (project) => {
-      elements.liveStatus.textContent = `${project.title} closed. Returned to the selected works shelf.`;
-      elements.cursorLabel.textContent = "";
-    }
-  });
+  await dismiss();
+  document.documentElement.classList.add("ready");
 
-  scrollStory = setupScrollStory({
-    state,
-    onChapterChange: updateChapter,
-    onProjectFocusRequest: scrollToProject
-  });
-  attachProjectEvents();
-  attachPointerEvents();
-  attachResponsiveLifecycle();
-  attachCommissionInteraction();
-  setupDebug();
-  updateProjectMeta(0, true);
-
-  await criticalLoads;
-  await loader.dismiss();
-  document.documentElement.classList.add("experience-ready");
-
-  if (!state.reduceMotion) {
-    gsap.timeline()
-      .fromTo(world.heroBook.scale, { x: 1.08, y: 1.08, z: 1.08 }, { x: 1, y: 1, z: 1, duration: 1.4, ease: "power3.out" })
-      .fromTo(".hero-title__back, .hero-title__front", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 1.15, stagger: 0.08, ease: "power3.out" }, 0.05)
-      .fromTo(".hero-deck", { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.85, ease: "power3.out" }, 0.42)
-      .fromTo(".hero-kicker, .open-library", { opacity: 0 }, { opacity: 1, duration: 0.7, stagger: 0.1, ease: "power2.out" }, 0.7);
+  if (!reduceMotion) {
+    // The volume settles into its hero pose; the type resolves after it.
+    gsap.timeline({ defaults: { ease: "power3.out" } })
+      .fromTo(world.heroBook.scale,
+        { x: 1.075, y: 1.075, z: 1.075 },
+        { x: 1, y: 1, z: 1, duration: 1.4 }, 0)
+      .fromTo(world.heroBook.visual.rotation,
+        { y: 0.16, x: 0.05 },
+        { y: 0, x: 0, duration: 1.4 }, 0)
+      .fromTo([".line--upper", ".line--lower"],
+        { yPercent: 46, opacity: 0 },
+        { yPercent: 0, opacity: 1, duration: 1.15, stagger: 0.1 }, 0.12)
+      .fromTo(".frontispiece__deck",
+        { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.85 }, 0.5)
+      .fromTo(".kicker", { opacity: 0 }, { opacity: 0.7, duration: 0.7 }, 0.82)
+      .fromTo(".frontispiece__open", { opacity: 0 }, { opacity: 0.72, duration: 0.7 }, 0.96);
   }
-
-  scrollStory.refresh();
 }
 
-init().catch((error) => {
-  console.error("The Site Library failed to initialize", error);
-  showFallback("The live archive could not initialize. Every selected project remains available in this static edition.");
-  elements.loader.hidden = true;
+/* ------------------------------------------------------------------ *
+ * Lifecycle
+ * ------------------------------------------------------------------ */
+
+let resizeWidth = window.innerWidth;
+let resizeHeight = window.innerHeight;
+
+function handleResize() {
+  const widthChanged = window.innerWidth !== resizeWidth;
+  const heightChanged = window.innerHeight !== resizeHeight;
+  if (!widthChanged && !heightChanged) return;
+  // Touch browsers resize on address-bar reveal, which must not rebuild the
+  // journey. A width change, or any change at all on a pointer device, does.
+  if (!widthChanged && window.matchMedia("(pointer: coarse)").matches) return;
+  resizeWidth = window.innerWidth;
+  resizeHeight = window.innerHeight;
+  world?.resize();
+  if (conductor) {
+    world?.setAnchors(conductor.measure());
+    ScrollTrigger.refresh();
+    world?.setAnchors(conductor.measure());
+  }
+}
+
+window.addEventListener("resize", handleResize, { passive: true });
+
+// The window resize event is not fired for every way a viewport can change,
+// notably when the page is embedded and its container is resized. Observing the
+// document element catches those too, so the composition never runs at the
+// wrong breakpoint.
+if (typeof ResizeObserver !== "undefined") {
+  new ResizeObserver(handleResize).observe(document.documentElement);
+}
+
+window.matchMedia("(prefers-reduced-motion: reduce)")
+  .addEventListener("change", () => window.location.reload());
+
+window.addEventListener("pagehide", () => {
+  inspection?.destroy();
+  conductor?.destroy();
+  world?.dispose();
 });
 
-window.addEventListener("beforeunload", () => {
-  inspection?.destroy();
-  scrollStory?.destroy();
-  lenis?.destroy();
-  world?.destroy();
+boot().catch((error) => {
+  console.error("The Site Library could not open", error);
+  ui.buildEdition("The live archive could not open. Every volume is set out below.");
+  loaderRoot.hidden = true;
 });

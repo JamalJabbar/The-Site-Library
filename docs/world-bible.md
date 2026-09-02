@@ -97,11 +97,66 @@ One renderer, one scene, and one world remain alive from frontispiece through co
 | --- | --- | --- | ---: | --- | --- |
 | `frontispiece` | One floating Site Library volume | near-abstract parchment studio, shelf hidden in depth | 1.0 | bright key, low fog, no dust | fallback poster plus hero copy |
 | `journey` | The room reveals itself around the departing book | camera dollies back, architecture and project books emerge, hero enters exact slot | 5.8 | key dims, practicals rise, fog deepens | direct chapter still and text summary |
-| `selected-works` | Shelf becomes portfolio navigation | camera trucks across seven distinct volumes | 4.0 | warm shelf key, center-book foil response | accessible project cover list |
+| `selected-works` | Shelf becomes portfolio navigation | camera trucks along a spine-out row; the volume at the compositional centre draws out of the shelf and turns its front board to the lens | 4.0 | warm shelf key, center-book foil response | accessible project cover list |
 | `reading-room` | Authored service model | camera moves beyond shelf toward limestone reading table | 1.15 | diffuse warm light, low fog | semantic service catalog |
 | `binding` | Process shown through construction | hero book separates into boards, spine, pages, endpaper, and foil, then reassembles | 1.7 | precise neutral product light | ordered process list |
 | `studio` | Small studio, deliberate output | camera rests on quiet architectural negative space | 1.1 | parchment-biased fill, no particles | editorial studio copy |
 | `commission` | Next client's empty place | hero book rests on dark table beside one open shelf slot | 1.0 | warm directional key, deep walnut ambient | final CTA and email |
+
+## Shelving
+
+Volumes stand on the shelf the way volumes actually do: spine out, on their
+tails, leaning toward the one place in the row that is deliberately left empty.
+What a volume spends along the shelf run is therefore its thickness, and what it
+needs inside the case is the width of its boards, which is what sets the depth
+of the carcass.
+
+Lean is authored per volume and everything else is solved from it: the standing
+height of the centre, the position of the board plane, and the clearance a pair
+of neighbours needs at the head where a widening lean closes them together. Two
+volumes can never be authored into each other; the static gate measures the
+clearance up the whole board.
+
+A spine says what a volume is, not what it looks like, so the collection is read
+one volume at a time. The volume at the compositional centre is drawn clear of
+the row along the front of the case, rises, and turns until its front board is
+square to the lens with enough of the spine still showing to say what it came
+off. The move is one interpolation between two absolute poses, driven by the
+same focus value the metadata is driven by, so a volume can be caught anywhere
+along it, opened for inspection, and returned to exactly where it was.
+
+## Legibility
+
+Type is set over a live render, so nothing about its contrast can be left to
+where the camera happens to be pointing. Three rules carry it.
+
+**The page turns over on an authored channel.** `ink` runs alongside the light
+and the haze in the scene ledger: 0 is dark type on a pale ground, 1 is pale
+type on a dark one. It is authored rather than inferred from the fog colour,
+because a room can still be lit long after its distance haze has gone dark, and
+the page has to turn when the copy stops being readable rather than when the
+fog says so. The two thresholds that read it are a deadband, so scrubbed scroll
+cannot flicker the whole interface across a single boundary.
+
+**Every chapter lays a plate under its own copy.** A soft gradient in the tone
+the page is currently set in, angled toward the side the copy occupies, sitting
+between the renderer and the type. It turns over on the same `ink` value, so
+the plate and the ink can never disagree about which page this is. Below the
+width where the copy stops being a column and becomes the page, the plate lies
+across the whole frame instead.
+
+**A chapter's copy lives inside its chapter.** Stages are sticky, so the one
+arriving and the one leaving share the viewport for a full screen of scrolling.
+Every beat is scrubbed against `top top` to `bottom bottom`, which is exactly
+the window in which a stage is pinned; copy arrives after 0 and leaves before
+1, the stage dims as it travels out, and the stage clips. Copy revealed by
+scroll is also held at zero in the stylesheet rather than by the first run of
+its tween, so a reader who loads the page and scrolls straight down never
+catches a chapter lit while it is still climbing the frame.
+
+`scripts/text-audit.js` walks the document and measures the result: every run
+of glyphs against every other run, and every run against the recomposited
+background behind it. It is a development harness, not shipped code.
 
 ## Camera Ledger
 
@@ -121,7 +176,7 @@ Desktop and mobile endpoints are authored independently. Coordinates are the ini
 
 | id | availability | hover or focus | activation | accessible proxy | recovery |
 | --- | --- | --- | --- | --- | --- |
-| `project-book-*` | selected works chapter only | translate 0.05m, yaw 2 degrees, foil key +12% | open inspection state and preserve shelf pose | real button with project title | Escape or Return restores exact transform and scroll |
+| `project-book-*` | selected works chapter only | hover eases the volume a sixth of the way out of the row; the focused volume travels the whole way | open inspection state and preserve the presented pose | real button with project title | Escape or Return restores exact transform and scroll |
 | `inspection-book` | project inspection only | pointer yaw +/-7 degrees, pitch +/-4 degrees, cover crack 12 degrees | external project link stays in DOM | inspection region with close and visit actions | focus returns to originating project button |
 | `commission-book` | commission chapter only | cover opens 6 degrees | Commission a Site mail link | real CTA link | cover returns on blur or pointer exit |
 

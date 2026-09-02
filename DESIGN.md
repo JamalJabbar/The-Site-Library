@@ -94,8 +94,8 @@ The visual register rejects generic agency cards, nostalgic old-library theater,
 The palette is a warm publishing neutral system grounded by ink and walnut, with aged brass reserved for physical detail and focus.
 
 ### Primary
-- **Aged Brass** (`#ad8955`): Foil, progress, focus outlines, and warm shelf highlights. It is an accent, never a page wash.
-- **Brass Paper Edge** (`#c6a776`): Softer interactive emphasis on dark surfaces.
+- **Aged Brass** (`#a8834e`): Foil, progress, focus outlines, and warm shelf highlights. It is an accent, never a page wash.
+- **Brass Paper Edge** (`#dcc6a2`): The same metal, alloyed lighter for dark surfaces. Brass reads against walnut; it does not read against the near-black plate the copy is set on, so the dark page carries its own value of it.
 
 ### Secondary
 - **Oxblood Cloth** (`#592328`): Selected volume identity and bookmark detail.
@@ -107,10 +107,12 @@ The palette is a warm publishing neutral system grounded by ink and walnut, with
 - **Page Paper** (`#e5ded1`): Page blocks and recessed editorial surfaces.
 - **Reading Cream** (`#f8f4eb`): Light copy on walnut and the fallback hero.
 - **Printing Ink** (`#151310`): Primary text, borders, and the deepest readable mark.
-- **Soft Ink** (`#35302a`): Secondary prose only.
+- **Soft Ink** (`#1d1913`): Secondary prose only. Secondary, not faint: it carries decks, descriptions and definitions, every one of which is read rather than glanced at, and it holds 4.5:1 against the plate its chapter lays down.
 - **Walnut** (`#281d17`) and **Deep Walnut** (`#18110e`): Architecture, shelf darkness, and commission atmosphere.
 
 **The Rare Metal Rule.** Brass stays below roughly 10% of a frame. Its scarcity is what makes foil and focus feel valuable.
+
+**The Plate Rule.** No line of type is read off the render. Every chapter lays a soft plate of the room's own light under the column its copy occupies, and the ink and the plate turn over together on one authored channel, so a page is never set in dark type over a dark room while the two disagree about which it is. Contrast is a property of the design here, not an outcome of the shot. `scripts/text-audit.js` walks the whole document and measures it.
 
 ## Typography
 

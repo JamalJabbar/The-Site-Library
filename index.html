@@ -1,255 +1,289 @@
 <!doctype html>
-<html lang="en" data-scene="light" data-chapter="frontispiece">
+<html lang="en" data-surface="light" data-chapter="frontispiece">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f0ece3" />
     <meta
       name="description"
-      content="The Site Library creates authored digital identities and web experiences for distinctive brands."
+      content="The Site Library is an independent digital design studio. We build distinctive identities and web experiences for brands that refuse to look interchangeable."
     />
-    <title>The Site Library | Digital Editions for Distinctive Brands</title>
+    <title>The Site Library / Digital Editions for Distinctive Brands</title>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Skip to content</a>
+    <a class="skip-link" href="#main">Skip to content</a>
 
+    <!-- Bookplate preloader -->
     <div class="loader" data-loader role="status" aria-live="polite">
-      <div class="loader__inner">
-        <div class="loader__book" aria-hidden="true">
-          <span>TSL</span>
+      <div class="loader__plate">
+        <svg class="loader__book" viewBox="0 0 112 148" fill="none" aria-hidden="true">
+          <path class="loader__outline" d="M9 6h94v136H9z" />
+          <path class="loader__outline loader__outline--spine" d="M20 6v136" />
+          <path class="loader__rule" d="M38 108h36" />
+        </svg>
+        <span class="loader__monogram" aria-hidden="true">TSL</span>
+      </div>
+      <p class="loader__wordmark">The Site Library</p>
+      <div class="loader__progress">
+        <div class="loader__readout">
+          <span data-loader-status>Archive loading</span>
+          <span data-loader-percent>000%</span>
         </div>
-        <p class="loader__wordmark">The Site Library</p>
-        <div class="loader__progress">
-          <div class="loader__progress-copy">
-            <span data-loader-status>Archive loading</span>
-            <span data-loader-percentage>000%</span>
-          </div>
-          <div class="loader__bar" aria-hidden="true">
-            <span class="loader__bar-fill" data-loader-bar></span>
-          </div>
-        </div>
+        <div class="loader__bar"><span data-loader-bar></span></div>
       </div>
     </div>
 
-    <div class="world-layer" aria-hidden="true">
-      <canvas id="world-canvas"></canvas>
-    </div>
-    <div class="paper-grain" aria-hidden="true"></div>
+    <div class="backdrop" data-backdrop aria-hidden="true"></div>
 
-    <header class="site-header">
-      <a class="identity" href="#frontispiece" aria-label="The Site Library, return to frontispiece">
-        <span class="identity__bookplate" aria-hidden="true">TSL</span>
-        <span class="identity__wordmark">The Site Library</span>
+    <!--
+      The upper headline line lives underneath the renderer so the volume
+      physically occludes it. Both lines are positioned against the viewport
+      rather than sharing a flow, which is what lets them sit in different
+      layers and still hold the composition.
+    -->
+    <div class="behind-type" aria-hidden="true">
+      <span class="line line--upper">Websites</span>
+    </div>
+
+    <!-- One persistent renderer for the whole journey -->
+    <div class="stage" aria-hidden="true"><canvas id="world"></canvas></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="masthead">
+      <a class="imprint" href="#frontispiece">
+        <svg class="imprint__plate" viewBox="0 0 28 34" fill="none" aria-hidden="true">
+          <rect x="1.4" y="1.4" width="25.2" height="31.2" rx="1" />
+          <path d="M6.6 1.4v31.2" />
+        </svg>
+        <span class="imprint__name">The Site Library</span>
       </a>
 
-      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
-        Menu
+      <button class="masthead__toggle" type="button" aria-expanded="false" aria-controls="nav">
+        <span data-menu-label>Menu</span>
       </button>
 
-      <nav class="primary-navigation" id="primary-navigation" aria-label="Primary navigation">
+      <nav class="nav" id="nav" aria-label="Primary">
         <a href="#frontispiece">Index</a>
         <a href="#selected-works">Selected Works</a>
         <a href="#studio">Studio</a>
         <a href="#commission">Contact</a>
-        <span class="volume-mark" aria-hidden="true">Vol. I</span>
-        <a class="nav-cta" href="mailto:hello@thesitelibrary.com">Commission a Site</a>
+        <span class="nav__volume" aria-hidden="true">Vol. I</span>
+        <a class="nav__cta" href="mailto:hello@thesitelibrary.com">Commission a Site</a>
       </nav>
     </header>
 
-    <aside class="chapter-indicator" aria-label="Current chapter">
-      <div class="chapter-indicator__numbers">
-        <span data-chapter-current>01</span>
-        <span aria-hidden="true">/</span>
-        <span>07</span>
-      </div>
-      <span class="chapter-indicator__label" data-chapter-label>Frontispiece</span>
-      <span class="chapter-indicator__track" aria-hidden="true">
-        <span class="chapter-indicator__fill"></span>
-      </span>
+    <aside class="ledger" aria-label="Chapter">
+      <span class="ledger__number" data-chapter-number>01</span>
+      <span class="ledger__rule" aria-hidden="true"></span>
+      <span class="ledger__total" aria-hidden="true">07</span>
+      <span class="ledger__label" data-chapter-label>Frontispiece</span>
+      <span class="ledger__track" aria-hidden="true"><i data-progress-fill></i></span>
     </aside>
 
-    <div class="hero-copy">
-      <p class="hero-kicker">The Site Library / Independent Digital Design Studio</p>
-      <h1 class="hero-title" aria-label="Websites worth keeping.">
-        <span class="hero-title__back" aria-hidden="true">Websites</span>
-        <span class="hero-title__front" aria-hidden="true"><i>worth keeping.</i></span>
-      </h1>
-      <p class="hero-deck">
-        Distinctive digital identities and web experiences for brands that refuse to look interchangeable.
-      </p>
-      <a class="open-library" href="#journey">Open the library <span aria-hidden="true">&darr;</span></a>
-    </div>
-
-    <main id="main-content">
-      <section class="chapter frontispiece" id="frontispiece" aria-labelledby="frontispiece-heading">
-        <h2 class="sr-only" id="frontispiece-heading">Frontispiece</h2>
+    <main id="main">
+      <!-- 01 -->
+      <section class="chapter" id="frontispiece" aria-labelledby="frontispiece-title">
+        <div class="chapter__stage frontispiece">
+          <p class="kicker" data-hero-kicker>The Site Library / Independent digital design studio</p>
+          <h1 class="frontispiece__title" id="frontispiece-title">
+            <span class="line line--lower" aria-hidden="true"><em>worth keeping.</em></span>
+            <span class="sr-only">Websites worth keeping.</span>
+          </h1>
+          <p class="frontispiece__deck">
+            Distinctive digital identities and web experiences for brands that
+            refuse to look interchangeable.
+          </p>
+          <a class="frontispiece__open" href="#selected-works">
+            <span>Open the library</span>
+            <svg viewBox="0 0 12 22" fill="none" aria-hidden="true"><path d="M6 0v20m0 0 5-5m-5 5-5-5" /></svg>
+          </a>
+        </div>
       </section>
 
-      <section class="chapter journey" id="journey" aria-labelledby="journey-heading">
-        <div class="journey-stage">
-          <h2 class="sr-only" id="journey-heading">Into the stacks</h2>
-          <p class="journey-note journey-note--architecture">The room was here all along.</p>
-          <div class="journey-note journey-note--collection">
-            <span>Selected Works / 2024-2026</span>
+      <!-- 02 -->
+      <section class="chapter chapter--tall" id="stacks" aria-labelledby="stacks-title">
+        <h2 class="sr-only" id="stacks-title">Into the stacks</h2>
+        <div class="chapter__stage stacks">
+          <p class="caption caption--room" data-stacks-room>The room was here the whole time.</p>
+          <div class="caption caption--collection" data-stacks-collection>
+            <span class="caption__eyebrow">Selected works / 2024 to 2026</span>
             <strong>Every site becomes part of the collection.</strong>
           </div>
         </div>
       </section>
 
-      <section class="chapter selected-works" id="selected-works" aria-labelledby="selected-heading">
-        <div class="library-stage">
-          <h2 class="sr-only" id="selected-heading">Selected works</h2>
-          <div class="project-meta" aria-live="polite">
-            <p class="project-meta__volume" data-meta-volume>01 / 07</p>
-            <h3 data-meta-title>Assurance Remodeling</h3>
-            <p class="project-meta__category" data-meta-category>Residential architecture</p>
-            <p class="project-meta__year" data-meta-year>2026</p>
-            <button class="text-action" type="button" data-open-focused-project>
-              View project <span aria-hidden="true">&#8599;</span>
+      <!-- 03 -->
+      <section class="chapter chapter--tall" id="selected-works" aria-labelledby="selected-title">
+        <h2 class="sr-only" id="selected-title">Selected works</h2>
+        <div class="chapter__stage works">
+          <div class="works__meta" data-meta aria-live="polite">
+            <p class="works__count"><span data-meta-count>01</span> / 07</p>
+            <h3 class="works__title" data-meta-title>Assurance Remodeling</h3>
+            <p class="works__industry" data-meta-industry>Residential architecture</p>
+            <p class="works__year" data-meta-year>2026</p>
+            <button class="action" type="button" data-open-focused>
+              <span>View volume</span>
+              <svg viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 12 12 2M4 2h8v8" /></svg>
             </button>
           </div>
-          <div class="project-buttons" data-project-buttons aria-label="Select a project volume"></div>
+
+          <p class="works__reserved" data-reserved-note>
+            <span class="caption__eyebrow">The reserved place</span>
+            <strong>One volume remains unbound.</strong>
+          </p>
+
+          <div class="rail" data-rail role="group" aria-label="Volumes in the collection"></div>
         </div>
       </section>
 
-      <section class="chapter reading-room surface-light" id="reading-room" aria-labelledby="reading-heading">
-        <div class="reading-room__layout">
-          <div class="reading-room__intro">
-            <h2 id="reading-heading">A website should<br />feel authored.</h2>
+      <!-- 04 -->
+      <section class="chapter chapter--tall" id="reading-room" aria-labelledby="reading-title">
+        <div class="chapter__stage reading">
+          <div class="reading__lede">
+            <h2 id="reading-title">A website should<br />feel authored.</h2>
             <p>
-              We create considered digital experiences for brands that value identity, craft, and lasting distinction.
+              We make considered digital experiences for brands that value identity,
+              craft and lasting distinction.
             </p>
           </div>
-          <ol class="service-catalog">
+          <ol class="catalogue">
             <li>
-              <span>01</span>
-              <div><h3>Art direction</h3><p>Visual systems, typography, and digital identity.</p></div>
+              <span class="catalogue__index">01</span>
+              <h3>Art direction</h3>
+              <p>Visual systems, typography and digital identity.</p>
             </li>
             <li>
-              <span>02</span>
-              <div><h3>Web design</h3><p>Bespoke interface and interaction design.</p></div>
+              <span class="catalogue__index">02</span>
+              <h3>Web design</h3>
+              <p>Bespoke interface and interaction design.</p>
             </li>
             <li>
-              <span>03</span>
-              <div><h3>Development</h3><p>Production-ready custom experiences.</p></div>
+              <span class="catalogue__index">03</span>
+              <h3>Development</h3>
+              <p>Production-ready custom experiences.</p>
             </li>
             <li>
-              <span>04</span>
-              <div><h3>Motion and 3D</h3><p>WebGL and cinematic storytelling used with purpose.</p></div>
+              <span class="catalogue__index">04</span>
+              <h3>Motion and 3D</h3>
+              <p>WebGL and cinematic storytelling, used when it carries meaning.</p>
             </li>
           </ol>
         </div>
       </section>
 
-      <section class="chapter binding surface-light" id="binding" aria-labelledby="binding-heading">
-        <div class="binding-stage">
-          <div class="binding-editorial">
-            <div class="binding-copy">
-              <h2 id="binding-heading">Every volume<br />is bound differently.</h2>
-              <p>One process, shaped around the character and ambitions of each brand.</p>
-            </div>
-            <ol class="process-list">
-              <li class="process-entry"><span>01</span><div><h3>Discover</h3><p>We learn what makes the brand worth remembering.</p></div></li>
-              <li class="process-entry"><span>02</span><div><h3>Define</h3><p>We establish the visual and interactive language.</p></div></li>
-              <li class="process-entry"><span>03</span><div><h3>Design</h3><p>The identity becomes a coherent digital system.</p></div></li>
-              <li class="process-entry"><span>04</span><div><h3>Build</h3><p>Motion, interaction, and technology bring it to life.</p></div></li>
-              <li class="process-entry"><span>05</span><div><h3>Publish</h3><p>The finished site enters the world.</p></div></li>
-            </ol>
+      <!-- 05 -->
+      <section class="chapter chapter--tall" id="binding" aria-labelledby="binding-title">
+        <div class="chapter__stage binding">
+          <div class="binding__lede">
+            <h2 id="binding-title">Every volume<br />is bound<br />differently.</h2>
+            <p>One process, shaped around the character and ambitions of each brand.</p>
           </div>
+          <ol class="process">
+            <li class="process__step"><span>01</span><h3>Discover</h3><p>We learn what makes the brand worth remembering.</p></li>
+            <li class="process__step"><span>02</span><h3>Define</h3><p>We establish the visual and interactive language.</p></li>
+            <li class="process__step"><span>03</span><h3>Design</h3><p>The identity becomes a coherent digital system.</p></li>
+            <li class="process__step"><span>04</span><h3>Build</h3><p>Motion, interaction and technology bring it to life.</p></li>
+            <li class="process__step"><span>05</span><h3>Publish</h3><p>The finished site enters the world.</p></li>
+          </ol>
         </div>
       </section>
 
-      <section class="chapter studio surface-light" id="studio" aria-labelledby="studio-heading">
-        <div class="studio__layout">
-          <div>
-            <h2 id="studio-heading">Small studio.<br />Deliberate output.</h2>
-            <p class="studio__lead">
-              Custom work, thoughtful collaboration, precise art direction, and technical craft from first idea to final release.
-            </p>
+      <!-- 06 -->
+      <section class="chapter chapter--tall" id="studio" aria-labelledby="studio-title">
+        <div class="chapter__stage studio">
+          <div class="studio__lede">
+            <h2 id="studio-title">Small studio.<br />Deliberate output.</h2>
           </div>
-          <div class="studio__statement">
-            <blockquote>We do not fill templates. We build the edition the brand deserves.</blockquote>
-            <dl>
-              <div><dt>Practice</dt><dd>Independent and available worldwide</dd></div>
-              <div><dt>Selected commissions</dt><dd>2024-2026</dd></div>
+          <div class="studio__body">
+            <p class="studio__lead">
+              Custom work rather than templates. Close collaboration, precise art
+              direction and technical craft from the first conversation to the
+              day the site goes live.
+            </p>
+            <blockquote class="studio__quote">
+              We do not fill templates. We build the edition the brand deserves.
+            </blockquote>
+            <dl class="studio__facts">
+              <div><dt>Practice</dt><dd>Independent, working worldwide</dd></div>
+              <div><dt>Selected commissions</dt><dd>2024 to 2026</dd></div>
               <div><dt>Focus</dt><dd>Design / Development / Motion</dd></div>
             </dl>
           </div>
         </div>
       </section>
 
-      <section class="chapter commission" id="commission" aria-labelledby="commission-heading">
-        <div class="commission__layout">
-          <div>
-            <h2 id="commission-heading">Your place<br />on the shelf.</h2>
-            <p>Have a project worth publishing?</p>
-          </div>
-          <div class="commission__actions">
-            <a class="commission-cta" href="mailto:hello@thesitelibrary.com" data-commission-cta>
-              Commission a Site
+      <!-- 07 -->
+      <section class="chapter chapter--tall" id="commission" aria-labelledby="commission-title">
+        <div class="chapter__stage commission">
+          <div class="commission__body">
+            <h2 id="commission-title">Your place<br />on the shelf.</h2>
+            <p class="commission__ask">Have a project worth publishing?</p>
+            <a class="commission__cta" href="mailto:hello@thesitelibrary.com" data-commission-cta>
+              <span>Commission a Site</span>
             </a>
-            <a class="email-link" href="mailto:hello@thesitelibrary.com">hello@thesitelibrary.com</a>
+            <a class="commission__email" href="mailto:hello@thesitelibrary.com">hello@thesitelibrary.com</a>
           </div>
+          <footer class="colophon">
+            <div>
+              <strong>The Site Library</strong>
+              <span>Digital design studio</span>
+            </div>
+            <span>Design / Development / Motion</span>
+            <span>&copy; 2026</span>
+          </footer>
         </div>
-        <footer class="site-footer">
-          <div><strong>The Site Library</strong><span>Digital Design Studio</span></div>
-          <span>Design / Development / Motion</span>
-          <span>&copy; 2026</span>
-        </footer>
       </section>
     </main>
 
-    <div class="mobile-inspection-stage" aria-hidden="true">
-      <canvas data-mobile-inspection-cover></canvas>
-    </div>
-
-    <section class="project-panel" data-project-panel hidden role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="project-panel-title">
-      <button class="project-panel__close" type="button" data-close-project>
-        <span aria-hidden="true">&larr;</span> Return to library
+    <!-- Inspection -->
+    <div class="volume" data-panel hidden role="dialog" aria-modal="true" aria-labelledby="volume-title">
+      <button class="volume__close" type="button" data-close-panel>
+        <svg viewBox="0 0 22 12" fill="none" aria-hidden="true"><path d="M22 6H1m0 0 5-5M1 6l5 5" /></svg>
+        <span>Return to library</span>
       </button>
-      <div class="project-panel__inner">
-        <p class="project-panel__volume" data-panel-volume>Volume 01 / 07</p>
-        <h2 id="project-panel-title" data-panel-title>Assurance Remodeling</h2>
-        <dl class="project-panel__facts">
+      <div class="volume__sheet">
+        <p class="volume__number"><span data-panel-volume>Volume 01</span> / 07</p>
+        <h2 id="volume-title" data-panel-title>Assurance Remodeling</h2>
+        <p class="volume__premise" data-panel-premise></p>
+        <dl class="volume__facts">
           <div><dt>Client</dt><dd data-panel-client></dd></div>
           <div><dt>Year</dt><dd data-panel-year></dd></div>
           <div><dt>Industry</dt><dd data-panel-industry></dd></div>
         </dl>
-        <p class="project-panel__premise" data-panel-premise></p>
-        <p class="project-panel__description" data-panel-description></p>
-        <div class="project-panel__columns">
+        <p class="volume__description" data-panel-description></p>
+        <div class="volume__columns">
           <div><h3>Services</h3><p data-panel-services></p></div>
           <div><h3>Technology</h3><p data-panel-technology></p></div>
         </div>
-        <div class="project-panel__outcome">
+        <div class="volume__outcome">
           <h3>Selected outcome</h3>
           <p data-panel-outcome></p>
         </div>
-        <a class="panel-link" data-panel-url href="#selected-works">
-          Visit live site <span aria-hidden="true">&#8599;</span>
+        <a class="volume__link" data-panel-url href="#selected-works">
+          <span>Visit live site</span>
+          <svg viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 12 12 2M4 2h8v8" /></svg>
         </a>
       </div>
-    </section>
+    </div>
 
-    <section class="webgl-fallback" data-webgl-fallback hidden aria-labelledby="fallback-title">
-      <div class="fallback-hero">
-        <img src="/images/library-fallback.png" alt="A contemporary walnut library with a linen book floating before its shelf" />
-        <div>
-          <p>The Site Library</p>
-          <h2 id="fallback-title">Websites worth keeping.</h2>
-          <span data-fallback-message>The complete collection is available below.</span>
-        </div>
+    <!-- Static edition, shown when WebGL is unavailable -->
+    <section class="edition" data-edition hidden aria-labelledby="edition-title">
+      <div class="edition__masthead">
+        <p class="kicker">The Site Library / Independent digital design studio</p>
+        <h2 id="edition-title">Websites <em>worth keeping.</em></h2>
+        <p data-edition-note>The complete collection is set out below.</p>
       </div>
-      <div class="fallback-projects" data-fallback-projects></div>
-      <a class="fallback-cta" href="mailto:hello@thesitelibrary.com">Commission a Site</a>
+      <div class="edition__grid" data-edition-grid></div>
+      <a class="commission__cta" href="mailto:hello@thesitelibrary.com"><span>Commission a Site</span></a>
     </section>
 
-    <div class="custom-cursor" data-cursor aria-hidden="true"><span></span></div>
-    <p class="sr-only" aria-live="polite" data-live-status></p>
+    <div class="cursor" data-cursor aria-hidden="true">
+      <i class="cursor__dot"></i>
+      <span class="cursor__label" data-cursor-label></span>
+    </div>
+    <p class="sr-only" aria-live="polite" data-announce></p>
 
-    <aside class="debug-panel" data-debug-panel hidden aria-label="Renderer diagnostics">
-      <pre data-debug-output></pre>
-    </aside>
+    <aside class="diagnostics" data-diagnostics hidden aria-label="Renderer diagnostics"><pre data-diagnostics-output></pre></aside>
 
     <script type="module" src="/src/main.js"></script>
   </body>

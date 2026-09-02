@@ -1,26 +1,43 @@
-import { gsap, ScrollTrigger } from "./scroll.js";
+import { gsap } from "./conductor.js";
 
-export function createInspectionController({ world, lenis, overlay, onOpen, onClose }) {
+const SCROLL_KEYS = new Set([
+  "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Spacebar"
+]);
+
+/**
+ * Removing a volume from the archive.
+ *
+ * Scroll is held rather than moved: Lenis stops and the raw scroll events are
+ * swallowed, so `window.scrollY` never changes and there is no position to
+ * restore afterwards. The volume travels from its measured shelf pose to a
+ * composition solved from the live viewport, and returns to the exact transform
+ * it was captured at.
+ */
+export function createInspection({ world, conductor, panel, onOpen, onClose, reduceMotion }) {
   let current = null;
   let timeline = null;
-  let savedScroll = 0;
   let origin = null;
-  let cameraPose = null;
-  const backgroundRegions = [
-    document.querySelector(".site-header"),
-    document.querySelector(".hero-copy"),
+  let restore = null;
+  const background = [
+    document.querySelector(".masthead"),
     document.querySelector("main")
   ].filter(Boolean);
 
-  function setBackgroundInert(value) {
-    backgroundRegions.forEach((region) => {
-      region.inert = value;
-    });
+  const sheet = panel.querySelector(".volume__sheet");
+  const closeButton = panel.querySelector("[data-close-panel]");
+
+  function blockScroll(event) {
+    if (!current) return;
+    if (event.type === "keydown") {
+      if (!SCROLL_KEYS.has(event.key)) return;
+      if (event.target.closest?.(".volume__sheet")) return;
+    }
+    event.preventDefault();
   }
 
   function trapFocus(event) {
     if (event.key !== "Tab" || !current) return;
-    const focusable = [...overlay.querySelectorAll("a[href], button:not([disabled])")]
+    const focusable = [...panel.querySelectorAll("a[href], button:not([disabled])")]
       .filter((element) => element.offsetParent !== null);
     if (!focusable.length) return;
     const first = focusable[0];
@@ -34,141 +51,144 @@ export function createInspectionController({ world, lenis, overlay, onOpen, onCl
     }
   }
 
-  document.addEventListener("keydown", trapFocus);
+  function onKeydown(event) {
+    if (event.key === "Escape" && current) {
+      event.preventDefault();
+      close();
+      return;
+    }
+    trapFocus(event);
+    blockScroll(event);
+  }
 
-  function open(book, originElement) {
-    if (!book || current || timeline) return;
-    const trigger = ScrollTrigger.getById("library-traversal");
-    savedScroll = window.scrollY;
-    origin = originElement || document.activeElement;
+  document.addEventListener("keydown", onKeydown);
+  window.addEventListener("wheel", blockScroll, { passive: false });
+  window.addEventListener("touchmove", blockScroll, { passive: false });
+
+  function setBackgroundInert(value) {
+    background.forEach((region) => { region.inert = value; });
+  }
+
+  function open(book, source) {
+    if (!book || current || timeline) return false;
     current = book;
-    cameraPose = {
-      position: world.pathRig.position.clone(),
-      quaternion: world.pathRig.quaternion.clone(),
-      fov: world.camera.fov
-    };
-    const base = {
+    origin = source || document.activeElement;
+
+    restore = {
       position: book.position.clone(),
       quaternion: book.quaternion.clone(),
-      scale: book.scale.clone()
+      camera: world.pathRig.position.clone(),
+      fov: world.camera.fov
     };
-    current.userData.inspectionBase = base;
-    book.visual.position.set(0, 0, 0);
-    book.visual.rotation.set(0, 0, 0);
-    const target = world.getInspectionPose(book);
 
-    lenis?.stop();
-    trigger?.disable(false);
+    const plan = world.planInspection(book);
+    conductor.stop();
     world.beginInspection(book);
     setBackgroundInert(true);
-    document.documentElement.classList.add("project-is-open");
-    overlay.hidden = false;
-    overlay.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("panel-open");
+    panel.hidden = false;
     onOpen?.(book.project);
 
+    const duration = reduceMotion ? 0.001 : 1.2;
     timeline = gsap.timeline({
-      defaults: { duration: 1.15, ease: "power4.inOut" },
+      defaults: { duration, ease: "power4.inOut" },
       onComplete: () => {
         timeline = null;
-        overlay.querySelector("[data-close-project]")?.focus({ preventScroll: true });
+        world.settleInspection();
+        closeButton?.focus({ preventScroll: true });
       }
     });
+
     timeline
-      .to(book.position, {
-        x: target.position.x,
-        y: target.position.y,
-        z: target.position.z
-      }, 0)
+      .to(book.position, { x: plan.book.position.x, y: plan.book.position.y, z: plan.book.position.z }, 0)
       .to(book.quaternion, {
-        x: target.quaternion.x,
-        y: target.quaternion.y,
-        z: target.quaternion.z,
-        w: target.quaternion.w
+        x: plan.book.quaternion.x,
+        y: plan.book.quaternion.y,
+        z: plan.book.quaternion.z,
+        w: plan.book.quaternion.w
       }, 0)
-      .to(book.scale, {
-        x: target.scale.x,
-        y: target.scale.y,
-        z: target.scale.z
+      .to(world.pathRig.position, {
+        x: plan.camera.position.x,
+        y: plan.camera.position.y,
+        z: plan.camera.position.z
       }, 0)
-      .to(world.camera, { fov: Math.max(29, world.camera.fov - 2), onUpdate: () => world.camera.updateProjectionMatrix() }, 0)
-      .fromTo(overlay.querySelector(".project-panel__inner"),
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.72, ease: "power3.out" },
-        0.48
-      );
+      .to(world.camera, {
+        fov: plan.camera.fov,
+        onUpdate: () => world.camera.updateProjectionMatrix()
+      }, 0)
+      .to(world.inputRig.rotation, { x: 0, y: 0, duration: duration * 0.5 }, 0)
+      .to(world, { inspectionBlend: 1, duration: duration * 0.8, ease: "power2.inOut" }, 0)
+      .fromTo(sheet,
+        { opacity: 0, y: 34 },
+        { opacity: 1, y: 0, duration: reduceMotion ? 0.001 : 0.8, ease: "power3.out" },
+        duration * 0.44)
+      .fromTo(panel.querySelector("[data-close-panel]"),
+        { opacity: 0 },
+        { opacity: 0.78, duration: reduceMotion ? 0.001 : 0.5 },
+        duration * 0.34);
+
+    return true;
   }
 
   function close() {
-    if (!current || timeline) return;
+    if (!current || timeline) return false;
     const book = current;
-    const base = book.userData.inspectionBase;
-    const trigger = ScrollTrigger.getById("library-traversal");
-    document.documentElement.classList.add("project-is-closing");
+    world.beginClosing();
 
+    const duration = reduceMotion ? 0.001 : 1.05;
     timeline = gsap.timeline({
-      defaults: { duration: 1.05, ease: "power4.inOut" },
+      defaults: { duration, ease: "power4.inOut" },
       onComplete: () => {
         world.endInspection();
-        overlay.hidden = true;
-        overlay.setAttribute("aria-hidden", "true");
+        panel.hidden = true;
         setBackgroundInert(false);
-        document.documentElement.classList.remove("project-is-open", "project-is-closing");
-        trigger?.enable(false, false);
-        window.scrollTo(0, savedScroll);
-        lenis?.start();
+        document.documentElement.classList.remove("panel-open");
+        conductor.start();
         origin?.focus?.({ preventScroll: true });
         onClose?.(book.project);
         current = null;
         timeline = null;
+        restore = null;
       }
     });
+
     timeline
-      .to(overlay.querySelector(".project-panel__inner"), {
-        opacity: 0,
-        y: 22,
-        duration: 0.38,
-        ease: "power2.out"
-      }, 0)
+      .to(sheet, { opacity: 0, y: 26, duration: reduceMotion ? 0.001 : 0.36, ease: "power2.in" }, 0)
+      .to(panel.querySelector("[data-close-panel]"), { opacity: 0, duration: 0.28 }, 0)
       .to(book.position, {
-        x: base.position.x,
-        y: base.position.y,
-        z: base.position.z
-      }, 0.08)
+        x: restore.position.x, y: restore.position.y, z: restore.position.z
+      }, 0.1)
       .to(book.quaternion, {
-        x: base.quaternion.x,
-        y: base.quaternion.y,
-        z: base.quaternion.z,
-        w: base.quaternion.w
-      }, 0.08)
-      .to(book.scale, {
-        x: base.scale.x,
-        y: base.scale.y,
-        z: base.scale.z
-      }, 0.08)
+        x: restore.quaternion.x,
+        y: restore.quaternion.y,
+        z: restore.quaternion.z,
+        w: restore.quaternion.w
+      }, 0.1)
       .to(world.pathRig.position, {
-        x: cameraPose.position.x,
-        y: cameraPose.position.y,
-        z: cameraPose.position.z
-      }, 0.08)
-      .to(world.pathRig.quaternion, {
-        x: cameraPose.quaternion.x,
-        y: cameraPose.quaternion.y,
-        z: cameraPose.quaternion.z,
-        w: cameraPose.quaternion.w
-      }, 0.08)
+        x: restore.camera.x, y: restore.camera.y, z: restore.camera.z
+      }, 0.1)
       .to(world.camera, {
-        fov: cameraPose.fov,
+        fov: restore.fov,
         onUpdate: () => world.camera.updateProjectionMatrix()
-      }, 0.08);
+      }, 0.1)
+      .to(world, { inspectionBlend: 0, duration: duration * 0.9, ease: "power2.inOut" }, 0);
+
+    return true;
   }
 
-  function destroy() {
-    timeline?.kill();
-    setBackgroundInert(false);
-    document.removeEventListener("keydown", trapFocus);
-    timeline = null;
-    current = null;
-  }
-
-  return { open, close, destroy, get current() { return current; } };
+  return {
+    open,
+    close,
+    get current() { return current; },
+    get busy() { return Boolean(timeline); },
+    destroy() {
+      timeline?.kill();
+      timeline = null;
+      current = null;
+      setBackgroundInert(false);
+      document.removeEventListener("keydown", onKeydown);
+      window.removeEventListener("wheel", blockScroll);
+      window.removeEventListener("touchmove", blockScroll);
+    }
+  };
 }
