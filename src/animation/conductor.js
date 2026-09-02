@@ -6,8 +6,6 @@ import { CHAPTERS, KEYFRAMES } from "../data/chapters.js";
 gsap.registerPlugin(ScrollTrigger);
 export { gsap, ScrollTrigger };
 
-const EASE = "power3.out";
-
 /**
  * Native document scroll is the only source of truth.
  *
@@ -99,6 +97,20 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
    * of type and the shot it belongs to always arrive together.
    * ------------------------------------------------------------------ */
 
+  /**
+   * A chapter's copy, scrubbed against its own scroll.
+   *
+   * Every beat in these timelines is written as a fraction of the chapter: a
+   * tween placed at 0.8 lands four fifths of the way through it, and one that
+   * runs for 0.07 occupies seven hundredths of it. That only holds if the
+   * timeline is exactly one unit long, so each is normalised once every beat
+   * has been added. Without it the scale would be whatever the last tween
+   * happened to end at, two blocks authored to hand over cleanly would still
+   * be on screen together, and the copy would be unreadable for the length of
+   * the overlap.
+   */
+  const scrubs = [];
+
   function scrubbed(trigger, options = {}) {
     const timeline = gsap.timeline({
       scrollTrigger: {
@@ -109,6 +121,7 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
         invalidateOnRefresh: true
       }
     });
+    scrubs.push(timeline);
     cleanup.push(() => {
       timeline.scrollTrigger?.kill();
       timeline.kill();
@@ -116,70 +129,138 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     return timeline;
   }
 
-  function entrance(targets, trigger, options = {}) {
-    const tween = gsap.from(targets, {
-      opacity: 0,
-      y: options.y ?? 26,
-      duration: options.duration ?? 0.95,
-      ease: EASE,
-      stagger: options.stagger ?? 0.07,
-      scrollTrigger: {
-        trigger,
-        start: options.start || "top 62%",
-        once: true
-      }
-    });
-    cleanup.push(() => {
-      tween.scrollTrigger?.kill();
-      tween.kill();
-    });
-    return tween;
-  }
 
   function buildBeats() {
     if (reduceMotion) return;
 
-    // 01 -> 02  The frontispiece releases its hold.
+    // 01 -> 02  The frontispiece releases its hold. The headline goes last,
+    // and the two lines leave in the order they arrived.
     scrubbed("#frontispiece", { start: "top top", end: "bottom top", scrub: 0.6 })
-      .to(".kicker", { opacity: 0, y: -18, ease: "none" }, 0)
-      .to(".frontispiece__deck", { opacity: 0, y: -14, ease: "none" }, 0.04)
-      .to(".frontispiece__open", { opacity: 0, y: 12, ease: "none" }, 0)
-      .to(".line--upper", { xPercent: -5, opacity: 0, ease: "none" }, 0.08)
-      .to(".line--lower", { xPercent: 7, opacity: 0, ease: "none" }, 0.12);
+      .to(".kicker", { opacity: 0, y: -18, duration: 0.32, ease: "none" }, 0)
+      .to(".frontispiece__open", { opacity: 0, y: 12, duration: 0.3, ease: "none" }, 0)
+      .to(".frontispiece__deck", { opacity: 0, y: -14, duration: 0.34, ease: "none" }, 0.06)
+      .to(".line--upper", { xPercent: -5, opacity: 0, duration: 0.46, ease: "none" }, 0.1)
+      .to(".line--lower", { xPercent: 7, opacity: 0, duration: 0.46, ease: "none" }, 0.18);
 
-    // 02  Two captions, each landing on its own beat of the camera move.
+    // 02  Two captions on the same centre line, so the first has to be gone
+    // before the second arrives. They share a grid cell: any overlap in time
+    // is an overlap in space.
     scrubbed("#stacks")
-      .fromTo(".caption--room", { opacity: 0, y: 22 }, { opacity: 1, y: 0, ease: "none" }, 0.42)
-      .to(".caption--room", { opacity: 0, y: -20, ease: "none" }, 0.6)
-      .fromTo(".caption--collection", { opacity: 0, y: 26 }, { opacity: 1, y: 0, ease: "none" }, 0.86);
+      .fromTo(".caption--room", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.1, ease: "none" }, 0.3)
+      .to(".caption--room", { opacity: 0, y: -20, duration: 0.09, ease: "none" }, 0.52)
+      .fromTo(".caption--collection", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.1, ease: "none" }, 0.7)
+      // Gone before the stage is: the last screen of a chapter is the one it
+      // spends travelling out of frame, and copy still lit while that happens
+      // is read up through the masthead over the chapter arriving behind it.
+      .to(".caption--collection", { opacity: 0, y: -18, duration: 0.08, ease: "none" }, 0.92);
 
-    // 03  Metadata arrives with the shelf, and hands over to the reserved place.
+    // 03  Metadata arrives with the shelf and hands over to the reserved place.
+    // Those two also share a cell, so the handover is a relay and not a
+    // crossfade: the card is off the page before the note is on it.
     scrubbed("#selected-works")
-      .fromTo(".works__meta", { opacity: 0, y: 22 }, { opacity: 1, y: 0, ease: "none" }, 0.04)
-      .fromTo(".rail", { opacity: 0, y: 16 }, { opacity: 1, y: 0, ease: "none" }, 0.06)
-      .to(".caption--collection", { opacity: 0, ease: "none" }, 0)
-      .to(".works__meta", { opacity: 0, y: -18, ease: "none" }, 0.87)
-      .fromTo(".works__reserved", { opacity: 0, y: 22 }, { opacity: 1, y: 0, ease: "none" }, 0.9)
-      .to(".rail", { opacity: 0.35, ease: "none" }, 0.9);
+      .fromTo(".works__meta", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.08, ease: "none" }, 0.05)
+      .fromTo(".rail", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.08, ease: "none" }, 0.07)
+      .to(".works__meta", { opacity: 0, y: -18, duration: 0.07, ease: "none" }, 0.8)
+      .to(".rail", { opacity: 0.35, duration: 0.08, ease: "none" }, 0.82)
+      .fromTo(".works__reserved", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.09, ease: "none" }, 0.9);
 
-    // 04, 06, 07  Reading beats: content enters once and then stays put.
-    entrance([".reading__lede h2", ".reading__lede p"], "#reading-room", { start: "top 55%" });
-    entrance(".catalogue li", "#reading-room", { start: "top 42%", stagger: 0.09 });
-    entrance([".studio__lede h2", ".studio__lead", ".studio__quote", ".studio__facts > div"],
-      "#studio", { start: "top 52%", stagger: 0.08 });
-    entrance([".commission__body h2", ".commission__ask", ".commission__cta", ".commission__email"],
-      "#commission", { start: "top 50%", stagger: 0.09 });
-    entrance(".colophon", "#commission", { start: "top 18%", y: 16 });
+    /*
+      04, 06, 07  The reading chapters.
+
+      These are scrubbed against their own chapter rather than triggered as the
+      chapter approaches, and that is a legibility decision rather than a
+      stylistic one. A stage is sticky: it travels up the viewport before it
+      pins and travels out again after. `top top` to `bottom bottom` is exactly
+      the window in which it is pinned, so copy that arrives after 0 and leaves
+      before 1 is only ever on screen while its chapter is holding the frame.
+      Copy revealed on approach is read through the masthead on the way in and
+      through the ledger on the way out, over whichever chapter is arriving
+      behind it.
+
+      Blocks move together and resolve one after another: the group carries the
+      travel, the stagger is carried by opacity alone. Lines that each threw
+      themselves a line-height clear would cross their neighbours on the way.
+    */
+    const reading = scrubbed("#reading-room");
+    reading
+      .fromTo(".reading__lede", { opacity: 0, y: 26 },
+        { opacity: 1, y: 0, duration: 0.12, ease: "none" }, 0.04)
+      .fromTo(".catalogue li", { opacity: 0 },
+        { opacity: 1, duration: 0.1, stagger: 0.03, ease: "none" }, 0.1)
+      .to([".reading__lede", ".catalogue"], { opacity: 0, y: -12, duration: 0.1, ease: "none" }, 0.88);
+
+    const studio = scrubbed("#studio");
+    studio
+      .fromTo(".studio__lede", { opacity: 0, y: 26 },
+        { opacity: 1, y: 0, duration: 0.12, ease: "none" }, 0.04)
+      .fromTo([".studio__lead", ".studio__quote", ".studio__facts > div"], { opacity: 0 },
+        { opacity: 1, duration: 0.1, stagger: 0.035, ease: "none" }, 0.1)
+      .to([".studio__lede", ".studio__body"], { opacity: 0, y: -12, duration: 0.1, ease: "none" }, 0.88);
+
+    // The last chapter keeps what it brings: the reader finishes here, and the
+    // address has to still be on the page when they do.
+    scrubbed("#commission")
+      .fromTo(".commission__body", { opacity: 0, y: 26 },
+        { opacity: 1, y: 0, duration: 0.12, ease: "none" }, 0.04)
+      .fromTo([".commission__ask", ".commission__cta", ".commission__email"], { opacity: 0 },
+        { opacity: 1, duration: 0.1, stagger: 0.04, ease: "none" }, 0.12)
+      .fromTo(".colophon", { opacity: 0 },
+        { opacity: 1, duration: 0.1, ease: "none" }, 0.34);
 
     // 05  Each step lights as its layer separates from the binding.
     const binding = scrubbed("#binding");
-    binding.fromTo(".binding__lede", { opacity: 0, y: 26 }, { opacity: 1, y: 0, ease: "none" }, 0.05);
+    binding.fromTo(".binding__lede", { opacity: 0, y: 26 },
+      { opacity: 1, y: 0, duration: 0.09, ease: "none" }, 0.04);
+    // The list is held down to a sixteenth in the stylesheet so an unlit step
+    // still reads as a step. That is dim, not invisible, so it has to arrive
+    // with the chapter rather than sit lit while the stage is still climbing
+    // the frame over the chapter behind it.
+    binding.fromTo(".process", { opacity: 0 },
+      { opacity: 1, duration: 0.09, ease: "none" }, 0.06);
     gsap.utils.toArray(".process__step").forEach((step, index, all) => {
       const at = 0.2 + (index / all.length) * 0.56;
       binding.to(step, { opacity: 1, ease: "none", duration: 0.09 }, at);
       binding.to(step, { opacity: 0.2, ease: "none", duration: 0.09 }, at + 0.13);
     });
-    binding.to(".binding__lede", { opacity: 0, y: -18, ease: "none" }, 0.9);
+    // The lede and the list leave together, before the stage does.
+    binding.to([".binding__lede", ".process"], { opacity: 0, y: -10, duration: 0.09, ease: "none" }, 0.89);
+
+    /*
+      A chapter leaves with its own copy.
+
+      The last screen of a chapter is the one its stage spends travelling out
+      of the frame, and the scrubbed timelines above all finish at the moment
+      that begins. Anything still lit is then carried up through the masthead
+      and read across the chapter arriving behind it. So each chapter dims as
+      it goes, on the stage itself: one property, written by nothing else, so
+      it can never fight the beats it is carrying.
+
+      The frontispiece is not in the list because it already writes its own
+      exit, and the commission is not because the document ends underneath it.
+    */
+    ["#stacks", "#selected-works", "#reading-room", "#binding", "#studio"].forEach((chapter) => {
+      const timeline = gsap.timeline({
+        scrollTrigger: {
+          trigger: chapter,
+          start: "bottom bottom",
+          // Quickly. The stage has a whole screen of travel ahead of it and
+          // the fixed chrome is waiting at both ends of that journey, so the
+          // copy is out of the way well before it reaches either.
+          end: "bottom 76%",
+          scrub: 0.5,
+          invalidateOnRefresh: true
+        }
+      });
+      timeline.to(`${chapter} .chapter__stage`, { opacity: 0, ease: "none" });
+      cleanup.push(() => {
+        timeline.scrollTrigger?.kill();
+        timeline.kill();
+      });
+    });
+
+    // Every beat above is a fraction of its own chapter; this is what makes
+    // that true.
+    scrubs.forEach((timeline) => timeline.totalDuration(1));
   }
 
   function attachAnchors(scrollTo) {

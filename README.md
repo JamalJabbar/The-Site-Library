@@ -16,10 +16,24 @@ npm install && npm run dev
 ```
 
 - `npm run build` production bundle
-- `npm run test:static` data, ledger and regression gate
+- `npm run test:static` data, ledger, legibility and regression gate
 
 Development URL flags: `?diagnostics` shows renderer stats and exposes
 `window.__TSL__`; `?edition` forces the no-WebGL edition.
+
+Legibility is measured rather than assumed. With the dev server running and
+`?diagnostics` on, `scripts/text-audit.js` walks the whole document and reports
+every collision between two runs of type, every block of copy that reaches
+outside its own chapter, and every line whose contrast falls under WCAG against
+the background actually painted behind it:
+
+```js
+const audit = await import("/scripts/text-audit.js");
+audit.sweep(window.__TSL__, { step: 0.1 });
+audit.proof("reading-room");   // and a flat image of the frame it measured
+```
+
+It is a harness, never imported by the application.
 
 ## How it is put together
 

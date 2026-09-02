@@ -164,39 +164,108 @@ export const HERO_VOLUME = {
 /**
  * Shelf layout, derived rather than authored.
  *
- * Volumes stand shoulder to shoulder in reading order. The Site Library's own
- * volume takes a reserved slot at the head of the row, and one slot is left
- * deliberately empty at the tail: the place the next commission will occupy.
+ * Volumes are shelved the way volumes actually are: spine out, standing on
+ * their tails. What a volume spends along the shelf run is therefore its
+ * thickness, not the width of its boards, and the width of its boards becomes
+ * the depth it needs inside the case.
+ *
+ * The row leans because one place at its tail is deliberately empty. Nothing
+ * is holding the last volumes upright, so they tip toward the gap in a run
+ * that opens up as it goes, resting back on the block of stock at the head of
+ * the row. Lean is authored per volume; every position is then solved from it.
+ *
+ * Two leaning boards stay parallel only while their angles agree. Where the
+ * lean opens up between neighbours the pair closes at the top, so the run has
+ * to carry that wedge as well as the thickness, or two volumes that look
+ * shelved at the board would be inside each other at the head.
  */
 export const SHELF = (() => {
-  const GAP = 0.045;
-  const HERO_INDEX = 0;
-  const EMPTY_WIDTH = 1.34;
+  const GAP = 0.03;
+  const EMPTY_WIDTH = 0.66;
+  const RADIANS = Math.PI / 180;
 
-  const widths = [];
-  widths[HERO_INDEX] = HERO_VOLUME.book.width;
-  PROJECTS.forEach((project, index) => {
-    widths[index + 1] = project.book.width;
-  });
-  widths.push(EMPTY_WIDTH);
+  // The whole row also rests back into the case. It is a small angle, but a
+  // volume shelved spine out is deep, so the corner it drops is not: without
+  // this the standing edge would sit a couple of millimetres inside the board.
+  const TILT = 0.035;
 
-  const total = widths.reduce((sum, width) => sum + width, 0) + GAP * (widths.length - 1);
+  // Where the spines stand. A hand-shelved row is pulled forward to the edge
+  // of the board, not pushed to the back of the case.
+  const FACE_Z = 0.16;
+
+  // How far along the run the lens aims past the volume it is reading, so the
+  // volume that comes out of the shelf sits clear of the metadata column.
+  // The compact composition has no side column, so it aims at the volume.
+  const AIM = 0.4;
+  const AIM_COMPACT = -0.5;
+
+  // Lean in degrees, tipping toward the head of the row. It opens up along the
+  // run: the volumes nearest the reserved place have least holding them.
+  const LEANS = [1.4, 2.2, 3.3, 2.7, 4.5, 3.9, 5.7, 7.2];
+
+  const row = [HERO_VOLUME, ...PROJECTS].map((project, index) => ({
+    lean: LEANS[index % LEANS.length] * RADIANS,
+    thickness: project.book.depth,
+    height: project.book.height,
+    depth: project.book.width
+  }));
+  // The reserved place stands square: there is nothing in it to lean.
+  row.push({ lean: 0, thickness: EMPTY_WIDTH, height: 2.4, depth: 1.34 });
+
   const slots = [];
-  let cursor = -total / 2;
-  widths.forEach((width) => {
-    slots.push({ x: cursor + width / 2, width });
-    cursor += width + GAP;
+  let pivot = 0;
+  row.forEach((item, index) => {
+    const { lean, thickness, height, depth } = item;
+    const run = thickness / Math.cos(lean);
+    slots.push({
+      // The centre of the volume, solved from the corner that is actually
+      // touching the board rather than assumed to be above it.
+      x: pivot + (thickness * Math.cos(lean) - height * Math.sin(lean)) / 2,
+      // Height of that centre above the shelf: the lowest corner of the box
+      // under both the lean and the tilt, which is what is actually standing
+      // on the board.
+      y: (
+        thickness * Math.sin(lean) +
+        height * Math.cos(lean) * Math.cos(TILT) +
+        depth * Math.cos(lean) * Math.sin(TILT)
+      ) / 2,
+      z: FACE_Z - depth / 2,
+      width: run,
+      pivot,
+      lean,
+      thickness,
+      height,
+      depth
+    });
+    const next = row[index + 1];
+    const wedge = next
+      ? Math.max(0, Math.min(height, next.height) * (Math.tan(next.lean) - Math.tan(lean)))
+      : 0;
+    pivot += run + GAP + wedge;
+  });
+
+  const span = pivot - GAP;
+  const shift = -span / 2;
+  slots.forEach((slot) => {
+    slot.x += shift;
+    slot.pivot += shift;
   });
 
   return {
     gap: GAP,
-    span: total,
-    heroSlot: slots[HERO_INDEX],
+    span,
+    faceZ: FACE_Z,
+    tilt: TILT,
+    aim: AIM,
+    aimCompact: AIM_COMPACT,
+    heroSlot: slots[0],
     emptySlot: slots[slots.length - 1],
     projectSlots: PROJECTS.map((_, index) => slots[index + 1]),
+    all: slots,
     // Standing surface of the shelf board the collection sits on.
     baseY: 0,
-    // Book centres sit this far forward of the case back panel.
-    restZ: -0.28
+    // The widest volume in the collection: what the case has to be able to
+    // hold, now that boards run into the shelf rather than across it.
+    deepest: Math.max(...row.map((item) => item.depth))
   };
 })();

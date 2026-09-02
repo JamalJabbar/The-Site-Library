@@ -33,6 +33,10 @@ export const INTERACTIVE_LAYER = 2;
 const DIM_COLOUR = new THREE.Color("#171009");
 const WHITE = new THREE.Color("#ffffff");
 const scratchColour = new THREE.Color();
+const scratchQuaternion = new THREE.Quaternion();
+const TIP_AXIS = new THREE.Vector3(1, 0, 0);
+const clamp01 = (value) => (value < 0 ? 0 : value > 1 ? 1 : value);
+const smoothstep = (value) => value * value * (3 - 2 * value);
 
 let sharedRibbonGeometry = null;
 
@@ -52,6 +56,9 @@ export class Book3D extends THREE.Group {
     this.parts = {};
 
     this.basePose = null;
+    this.shelfPose = null;
+    this.presentedPose = null;
+    this.presence = 0;
     this.hover = 0;
     this.focus = 0;
     this.dim = 0;
@@ -316,9 +323,12 @@ export class Book3D extends THREE.Group {
 
     // ---- raycast proxy --------------------------------------------------
     // Lives on its own layer, which the camera never enables, so it costs no
-    // draw call while still giving pointer and tap a forgiving target.
+    // draw call while still giving pointer and tap a forgiving target. Depth
+    // is kept close to the real binding: shelved spine out, a proxy that ran
+    // well past the boards would reach into the volume standing next to it and
+    // answer for a spine the pointer is nowhere near.
     const proxy = new THREE.Mesh(
-      this.#geometry(new THREE.BoxGeometry(width * 1.06, height * 1.04, depth * 2.1)),
+      this.#geometry(new THREE.BoxGeometry(width * 1.06, height * 1.04, depth * 1.4)),
       this.#material(new THREE.MeshBasicMaterial())
     );
     proxy.name = `${this.name}:proxy`;
@@ -328,6 +338,59 @@ export class Book3D extends THREE.Group {
     this.proxy = proxy;
 
     this.metrics = { board, square, joint, pageHeight, pageWidth, pageDepth, crown };
+  }
+
+  /**
+   * Where this volume stands when it is shelved, and where it stands when it
+   * is being read. Both are absolute world transforms, so the journey between
+   * them is one interpolation with exact endpoints rather than a chase.
+   */
+  setShelfPose(position, quaternion) {
+    this.shelfPose = { position: position.clone(), quaternion: quaternion.clone() };
+    return this;
+  }
+
+  setPresentedPose(position, quaternion, { tip = 0, arc = 0 } = {}) {
+    this.presentedPose = { position: position.clone(), quaternion: quaternion.clone() };
+    this.tip = tip;
+    this.arc = arc;
+    return this;
+  }
+
+  /**
+   * The pose at a given point of the journey out of the shelf.
+   *
+   * The volume is drawn clear of its neighbours before it is ever turned,
+   * because that is the order a hand does it in: the two channels overlap, but
+   * the turn starts late and finishes last. While it is still leaving the
+   * shelf it is tipped out by the head, and it rises through the middle of the
+   * move and settles, so the path is an arc rather than a slide.
+   */
+  composeTarget(presence, position, quaternion) {
+    const p = clamp01(presence);
+    if (!this.shelfPose) {
+      position.copy(this.position);
+      quaternion.copy(this.quaternion);
+      return;
+    }
+    if (!this.presentedPose || p <= 0) {
+      position.copy(this.shelfPose.position);
+      quaternion.copy(this.shelfPose.quaternion);
+      return;
+    }
+
+    const draw = smoothstep(clamp01(p / 0.62));
+    const turn = smoothstep(clamp01((p - 0.2) / 0.8));
+    position.lerpVectors(this.shelfPose.position, this.presentedPose.position, draw);
+    position.y += Math.sin(draw * Math.PI) * this.arc;
+    quaternion.slerpQuaternions(this.shelfPose.quaternion, this.presentedPose.quaternion, turn);
+
+    const tip = Math.sin(clamp01(p / 0.5) * Math.PI) * this.tip;
+    if (tip > 1e-4) {
+      // A tip in the room, not in the binding: the head comes toward the
+      // reader whichever way the volume is currently facing.
+      quaternion.premultiply(scratchQuaternion.setFromAxisAngle(TIP_AXIS, tip));
+    }
   }
 
   captureBasePose() {
@@ -379,11 +442,27 @@ export class Book3D extends THREE.Group {
    */
   present({ pointerX = 0, pointerY = 0, inspection = false, dt = 0.016 } = {}) {
     const attention = Math.max(this.hover, this.focus);
+
+    // A volume in the collection answers attention by leaving the shelf, so
+    // the local response is the pointer's alone. Everything else answers it in
+    // place, the way the hero volume does on the frontispiece.
+    const local = this.shelfPose ? this.hover : attention;
     const targetYaw = inspection
       ? pointerX * THREE.MathUtils.degToRad(7)
-      : attention * THREE.MathUtils.degToRad(2.4);
+      : local * THREE.MathUtils.degToRad(2.4);
     const targetPitch = inspection ? -pointerY * THREE.MathUtils.degToRad(4) : 0;
-    const targetLift = inspection ? 0 : attention * 0.26;
+    // Lift is measured along the volume's own boards. Shelved spine out, that
+    // axis runs along the shelf, so a shelved volume is never lifted on it.
+    const targetLift = inspection || this.shelfPose ? 0 : attention * 0.26;
+
+    if (this.shelfPose && !inspection) {
+      // Hover asks for a fraction of the same journey: the volume eases out of
+      // the row far enough to say it can be taken, and no further.
+      const target = clamp01(this.focus + this.hover * 0.16);
+      this.presence += (target - this.presence) * (1 - Math.exp(-5.5 * dt));
+      if (Math.abs(target - this.presence) < 0.0006) this.presence = target;
+      this.composeTarget(this.presence, this.position, this.quaternion);
+    }
 
     const damping = 1 - Math.exp(-9 * dt);
     this.presentYaw += (targetYaw - this.presentYaw) * damping;

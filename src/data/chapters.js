@@ -18,7 +18,10 @@ import { SHELF } from "./projects.js";
 export const CHAPTERS = [
   { id: "frontispiece", number: "01", label: "Frontispiece", nav: "Index", weight: 1.0, tone: "light" },
   { id: "stacks", number: "02", label: "Into the Stacks", nav: "Into the Stacks", weight: 5.4, tone: "shift" },
-  { id: "selected-works", number: "03", label: "Selected Works", nav: "Selected Works", weight: 5.0, tone: "dark" },
+  // The heaviest chapter in the book. Every volume in the collection has to
+  // leave the shelf, turn, be read and go back, so the traverse is paced for
+  // dwell on each one rather than for the distance the lens covers.
+  { id: "selected-works", number: "03", label: "Selected Works", nav: "Selected Works", weight: 6.5, tone: "dark" },
   { id: "reading-room", number: "04", label: "The Reading Room", nav: "Reading Room", weight: 2.4, tone: "dark" },
   { id: "binding", number: "05", label: "Binding", nav: "Binding", weight: 3.4, tone: "dark" },
   { id: "studio", number: "06", label: "The Studio", nav: "Studio", weight: 2.4, tone: "light" },
@@ -36,6 +39,36 @@ export const TABLE_REST = { x: 4.4, y: -6.14, z: 2.9 };
 export const BINDING_REST = { x: 3.3, y: 0.55, z: 2.6 };
 
 /**
+ * Where a volume stands once it has been drawn out of the collection.
+ *
+ * The shelf holds the row spine out, so a volume has to leave the shelf before
+ * a reader can see what it is. It comes out along the front of the case, rises
+ * clear of the board, drifts to the left of the metadata column, and turns
+ * until its front board is square to the lens with just enough of the spine
+ * still showing to say what it came off.
+ *
+ * x      offset along the run from the volume's own slot
+ * y      height of the volume's centre above the shelf, the same for every one
+ *        of them: a collection presented off a common base would ride up and
+ *        down the frame with the height of each binding
+ * z      measured from the line the spines stand on, so every volume comes out
+ *        to the same mark whatever the depth of its boards
+ * yaw    the turn off spine out, short of square, so the binding still reads
+ * pitch  head tipped a little away from the lens, the way a held book sits
+ * tip    a transient tip out by the head while it is still leaving the shelf
+ * arc    how far it rises through the move before it settles
+ */
+export const PRESENTATION = {
+  x: -0.5,
+  y: 1.44,
+  z: 0.9,
+  yaw: 13,
+  pitch: -3.5,
+  tip: 0.1,
+  arc: 0.12
+};
+
+/**
  * World channel reference
  *
  * key         directional key light intensity
@@ -46,6 +79,12 @@ export const BINDING_REST = { x: 3.3, y: 0.55, z: 2.6 };
  * hazeFar     bleached into an abstract cream field; opening these distances
  *             lets the architecture resolve without one opacity animation.
  * ground      colour the fog and the background resolve toward
+ * ink         0 sets the page in dark type on a pale ground, 1 in pale type on
+ *             a dark one. Authored rather than guessed from the fog colour: a
+ *             room can be lit long after its distance haze has gone dark, and
+ *             the page has to turn over when the copy stops being readable,
+ *             not when the fog says so. The scrim under the copy turns over on
+ *             the same value, so ink and plate can never disagree.
  * dust        motes in the shelf light
  * grain       film grain over the page
  * exposure    tone-mapping exposure
@@ -71,7 +110,7 @@ export const KEYFRAMES = [
       // bleached out of the key light, so the room is present but unreadable:
       // an abstract cream field. Opening these two distances is the reveal.
       key: 2.05, env: 0.85, practical: 0, table: 0, heroLight: 1,
-      hazeNear: 7.72, hazeFar: 9.78, ground: "#f0ece3",
+      hazeNear: 7.72, hazeFar: 9.78, ground: "#f0ece3", ink: 0,
       dust: 0, grain: 0.14, exposure: 1.0
     }
   },
@@ -87,7 +126,9 @@ export const KEYFRAMES = [
     },
     world: {
       key: 1.85, env: 0.72, practical: 0.4, table: 0, heroLight: 0.72,
-      hazeNear: 7.4, hazeFar: 12.5, ground: "#ddd3c1",
+      // Already a third of the way over: the key light drops away well before
+      // the haze does, so the page turns as the room does, not after it.
+      hazeNear: 7.4, hazeFar: 12.5, ground: "#ddd3c1", ink: 0.42,
       dust: 0.12, grain: 0.16, exposure: 1.04
     }
   },
@@ -103,7 +144,7 @@ export const KEYFRAMES = [
     },
     world: {
       key: 1.6, env: 0.66, practical: 1.1, table: 0, heroLight: 0.18,
-      hazeNear: 10, hazeFar: 48, ground: "#4c3b2c",
+      hazeNear: 10, hazeFar: 48, ground: "#4c3b2c", ink: 1,
       dust: 0.5, grain: 0.19, exposure: 0.99
     }
   },
@@ -112,17 +153,17 @@ export const KEYFRAMES = [
     chapter: "stacks",
     local: 1,
     camera: {
-      position: [SHELF.heroSlot.x + 1.25, 0.95, 8.9],
-      target: [SHELF.heroSlot.x + 0.9, 0.2, -0.28],
+      position: [SHELF.heroSlot.x + 0.95, 1.15, 8.9],
+      target: [SHELF.heroSlot.x + 0.6, 0.7, SHELF.faceZ - 0.5],
       fov: 39,
       mobile: {
-        position: [SHELF.heroSlot.x + 0.7, 1.0, 10.9],
-        target: [SHELF.heroSlot.x + 0.5, 0.25, -0.28],
+        position: [SHELF.heroSlot.x + 0.55, 1.2, 10.9],
+        target: [SHELF.heroSlot.x + 0.35, 0.75, SHELF.faceZ - 0.5],
         fov: 46
       }
     },
     world: {
-      key: 1.0, env: 0.44, practical: 1.5, table: 0,
+      key: 1.0, env: 0.44, practical: 1.5, table: 0, ink: 1,
       hazeNear: 12, hazeFar: 66, ground: "#251b13",
       dust: 0.82, grain: 0.21, exposure: 0.97
     }
@@ -135,17 +176,20 @@ export const KEYFRAMES = [
     // collection passes the lens at an even rhythm.
     linear: true,
     camera: {
-      position: [SHELF.projectSlots[0].x, 1.38, 6.45],
-      target: [SHELF.projectSlots[0].x, 1.16, -0.28],
+      // The lens aims past the slot it is reading, so the volume that comes
+      // out of the shelf lands left of the metadata column. The compact
+      // composition has no side column, so there it aims at the volume itself.
+      position: [SHELF.projectSlots[0].x + SHELF.aim, 1.5, 8.35],
+      target: [SHELF.projectSlots[0].x + SHELF.aim, 1.2, SHELF.faceZ - 0.5],
       fov: 34,
       mobile: {
-        position: [SHELF.projectSlots[0].x, 1.42, 8.1],
-        target: [SHELF.projectSlots[0].x, 1.2, -0.28],
-        fov: 43
+        position: [SHELF.projectSlots[0].x + SHELF.aimCompact, 1.54, 7.5],
+        target: [SHELF.projectSlots[0].x + SHELF.aimCompact, 1.24, SHELF.faceZ - 0.5],
+        fov: 42
       }
     },
     world: {
-      key: 0.85, env: 0.42, practical: 1.65, table: 0,
+      key: 0.85, env: 0.42, practical: 1.65, table: 0, ink: 1,
       hazeNear: 13, hazeFar: 72, ground: "#1e150f",
       dust: 0.92, grain: 0.21, exposure: 0.96
     }
@@ -155,13 +199,19 @@ export const KEYFRAMES = [
     chapter: "selected-works",
     local: 1,
     camera: {
-      position: [SHELF.emptySlot.x, 1.3, 6.05],
-      target: [SHELF.emptySlot.x, 1.08, -0.28],
+      // The same rails, a shade closer: the traverse closes in on the
+      // collection as it runs out of volumes to read.
+      position: [SHELF.emptySlot.x + SHELF.aim, 1.44, 8.0],
+      target: [SHELF.emptySlot.x + SHELF.aim, 1.14, SHELF.faceZ - 0.5],
       fov: 33,
-      mobile: { position: [SHELF.emptySlot.x, 1.34, 7.6], target: [SHELF.emptySlot.x, 1.12, -0.28], fov: 42 }
+      mobile: {
+        position: [SHELF.emptySlot.x + SHELF.aimCompact, 1.48, 7.2],
+        target: [SHELF.emptySlot.x + SHELF.aimCompact, 1.18, SHELF.faceZ - 0.5],
+        fov: 42
+      }
     },
     world: {
-      key: 0.85, env: 0.42, practical: 1.65, table: 0,
+      key: 0.85, env: 0.42, practical: 1.65, table: 0, ink: 1,
       hazeNear: 13, hazeFar: 72, ground: "#1e150f",
       dust: 0.92, grain: 0.21, exposure: 0.96
     }
@@ -177,7 +227,7 @@ export const KEYFRAMES = [
       mobile: { position: [9.4, -0.4, 11.8], target: [4.0, -5.1, 1.5], fov: 45 }
     },
     world: {
-      key: 0.72, env: 0.36, practical: 1.1, table: 2.2,
+      key: 0.72, env: 0.36, practical: 1.1, table: 2.2, ink: 1,
       hazeNear: 10, hazeFar: 54, ground: "#1c1510",
       dust: 0.5, grain: 0.19, exposure: 0.95
     }
@@ -193,7 +243,7 @@ export const KEYFRAMES = [
       mobile: { position: [2.9, 1.5, 10.8], target: [3.3, 0.5, 2.6], fov: 42 }
     },
     world: {
-      key: 1.5, env: 0.6, practical: 0.8, table: 0.5,
+      key: 1.5, env: 0.6, practical: 0.8, table: 0.5, ink: 1,
       hazeNear: 9, hazeFar: 30, ground: "#1f1812",
       dust: 0.38, grain: 0.17, exposure: 1.0
     }
@@ -212,7 +262,7 @@ export const KEYFRAMES = [
       // The studio pages step back into daylight. The haze closes right in, so
       // the case dissolves into a parchment field after its first metre and the
       // editorial copy can sit in ink again without a scrim over the room.
-      key: 2.3, env: 1.15, practical: 0.35, table: 0.2,
+      key: 2.3, env: 1.15, practical: 0.35, table: 0.2, ink: 0.05,
       hazeNear: 3.6, hazeFar: 8.4, ground: "#d3c7b2",
       dust: 0.22, grain: 0.13, exposure: 1.04
     }
@@ -222,13 +272,16 @@ export const KEYFRAMES = [
     chapter: "commission",
     local: 1,
     camera: {
-      position: [5.85, -2.55, 7.05],
-      target: [4.4, -6.1, 2.9],
+      // Aimed to the left of the volume rather than at it, so the closing
+      // headline has the left of the frame to itself and the book is not read
+      // through it. The lens holds the same distance and the same angle.
+      position: [4.75, -2.55, 7.05],
+      target: [3.3, -6.1, 2.9],
       fov: 36,
       mobile: { position: [5.3, -2.2, 7.9], target: [4.4, -6.05, 2.9], fov: 43 }
     },
     world: {
-      key: 0.5, env: 0.2, practical: 0.55, table: 2.1,
+      key: 0.5, env: 0.2, practical: 0.55, table: 2.1, ink: 1,
       hazeNear: 6, hazeFar: 28, ground: "#120c08",
       dust: 0.7, grain: 0.23, exposure: 0.92
     }

@@ -91,13 +91,19 @@ export function createInterface({ projects, reduceMotion }) {
       return;
     }
 
-    // Metadata is masked and replaced, the way a catalogue card is swapped.
+    // Metadata is replaced the way a catalogue card is swapped: the lines lift
+    // out, the card changes, the lines settle back.
+    //
+    // The travel is measured in pixels and kept well inside each line's own
+    // box. These four lines sit in normal flow with nothing masking them, so a
+    // line thrown a whole line-height clear would be read across the line
+    // above it for the length of the stagger.
     const targets = [el.metaCount, el.metaTitle, el.metaIndustry, el.metaYear];
     gsap.timeline()
-      .to(targets, { yPercent: -110, opacity: 0, duration: 0.2, ease: "power2.in", stagger: 0.02 })
+      .to(targets, { y: -9, opacity: 0, duration: 0.2, ease: "power2.in", stagger: 0.02 })
       .add(apply)
-      .set(targets, { yPercent: 60 })
-      .to(targets, { yPercent: 0, opacity: 1, duration: 0.42, ease: "power3.out", stagger: 0.035 });
+      .set(targets, { y: 11 })
+      .to(targets, { y: 0, opacity: 1, duration: 0.42, ease: "power3.out", stagger: 0.035 });
   }
 
   /* ---- chapter ledger --------------------------------------------------- */
@@ -121,9 +127,20 @@ export function createInterface({ projects, reduceMotion }) {
    * When the world is bright the type is ink; when it is dark the type is cream.
    * This is why the masthead is never cream on cream.
    */
-  function setSurfaceFromGround(colour) {
-    const luminance = 0.2126 * colour.r + 0.7152 * colour.g + 0.0722 * colour.b;
-    const next = luminance > 0.16 ? "light" : "dark";
+  /**
+   * Turns the page over.
+   *
+   * The ledger authors when a chapter is read in dark type on a pale ground
+   * and when it is read in pale type on a dark one, because a room can still
+   * be lit long after its distance haze has gone dark and the page has to turn
+   * when the copy stops being readable, not when the fog says so.
+   *
+   * The two thresholds are a deadband. Scrubbed scroll crosses a single
+   * threshold repeatedly on the smallest gesture, and every crossing would
+   * restate the ink, the plate under it, the hairlines and the browser chrome.
+   */
+  function setSurface(ink) {
+    const next = ink > 0.5 ? "dark" : ink < 0.4 ? "light" : surface;
     if (next !== surface) {
       surface = next;
       document.documentElement.dataset.surface = next;
@@ -259,7 +276,7 @@ export function createInterface({ projects, reduceMotion }) {
     setFocus,
     setChapter,
     setProgress,
-    setSurfaceFromGround,
+    setSurface,
     setBackdrop,
     setGrain,
     fillPanel,

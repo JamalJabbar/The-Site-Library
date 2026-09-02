@@ -3,7 +3,7 @@ import { Book3D, INTERACTIVE_LAYER, disposeSharedBookGeometry } from "./Book3D.j
 import { buildArchitecture, SITE } from "./architecture.js";
 import { buildEnvironmentMap, buildLighting, buildDust } from "./environment.js";
 import { createSurfaceMaps, createBookArtwork, disposeTextures } from "./textures.js";
-import { KEYFRAMES, HERO_REST, TABLE_REST, BINDING_REST } from "../data/chapters.js";
+import { KEYFRAMES, HERO_REST, TABLE_REST, BINDING_REST, PRESENTATION } from "../data/chapters.js";
 import { SHELF } from "../data/projects.js";
 
 const clamp01 = (value) => (value < 0 ? 0 : value > 1 ? 1 : value);
@@ -58,7 +58,39 @@ const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _v4 = new THREE.Vector3();
 const _q1 = new THREE.Quaternion();
+const _q2 = new THREE.Quaternion();
 const _m1 = new THREE.Matrix4();
+const AXIS_X = new THREE.Vector3(1, 0, 0);
+const AXIS_Y = new THREE.Vector3(0, 1, 0);
+const AXIS_Z = new THREE.Vector3(0, 0, 1);
+
+/** The quarter turn that puts a volume's spine out into the room. */
+const SPINE_OUT = Math.PI / 2;
+/** The whole row rests back into the case. The layout solves the standing
+ *  height from the same angle, so it is published by the shelf, not repeated. */
+const SHELF_TILT = -SHELF.tilt;
+
+/**
+ * The pose a volume is shelved in.
+ *
+ * Composed rather than authored as a single Euler, because the order is the
+ * whole point: the quarter turn is the volume's own, and the lean and the tilt
+ * are the room's. Written as one Euler, the tilt would be applied inside the
+ * turn and would tip the volume along the shelf instead of back into it.
+ */
+function shelfPose(lean, target) {
+  target.setFromAxisAngle(AXIS_Z, lean);
+  target.multiply(_q2.setFromAxisAngle(AXIS_X, SHELF_TILT));
+  return target.multiply(_q2.setFromAxisAngle(AXIS_Y, SPINE_OUT));
+}
+
+/** The pose a volume is read in: square to the lens, short of head on. */
+function presentedPose(target) {
+  target.setFromAxisAngle(AXIS_X, THREE.MathUtils.degToRad(PRESENTATION.pitch));
+  return target.multiply(
+    _q2.setFromAxisAngle(AXIS_Y, THREE.MathUtils.degToRad(PRESENTATION.yaw))
+  );
+}
 const _c1 = new THREE.Color();
 const _c2 = new THREE.Color();
 
@@ -227,7 +259,7 @@ export class LibraryWorld {
    * The collection itself streams in afterwards, one volume per frame.
    */
   #createHeroVolume() {
-    this.shelfQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.035, 0, 0));
+    this.shelfQuaternion = shelfPose(SHELF.heroSlot.lean, new THREE.Quaternion());
 
     this.heroBook = new Book3D({
       project: this.heroVolume,
@@ -245,10 +277,12 @@ export class LibraryWorld {
     // flight is measured rather than guessed and there is nothing to snap to.
     this.heroSlot = new THREE.Object3D();
     this.heroSlot.name = "hero-shelf-slot";
+    // The row is leaning, so the centre of a volume is neither above the place
+    // it stands nor at half its own height. Both come from the layout.
     this.heroSlot.position.set(
       SHELF.heroSlot.x,
-      SITE.shelfY + this.heroVolume.book.height / 2,
-      SHELF.restZ
+      SITE.shelfY + SHELF.heroSlot.y,
+      SHELF.heroSlot.z
     );
     this.heroSlot.quaternion.copy(this.shelfQuaternion);
     this.architecture.bookcase.add(this.heroSlot);
@@ -283,12 +317,29 @@ export class LibraryWorld {
         surfaces: this.surfaces
       });
       const slot = SHELF.projectSlots[index];
-      book.position.set(slot.x, SITE.shelfY + project.book.height / 2, SHELF.restZ);
-      book.quaternion.copy(this.shelfQuaternion);
-      // A hand-shelved row is never perfectly regular.
-      book.rotateZ((((index * 37) % 11) - 5) * 0.0016);
+      book.position.set(slot.x, SITE.shelfY + slot.y, slot.z);
+      shelfPose(slot.lean, book.quaternion);
+      // A hand-shelved row is never perfectly regular: a fraction of a degree
+      // of skew, so no two spines sit exactly square to the board.
+      book.rotateY((((index * 37) % 11) - 5) * 0.0024);
       book.userData.index = index;
       book.captureBasePose();
+
+      // The two poses this volume lives between for the whole of the shelf
+      // chapter. Both are absolute, so the blend has exact endpoints and the
+      // volume can be caught anywhere along it without drifting.
+      book.setShelfPose(book.position, book.quaternion);
+      book.setPresentedPose(
+        _v1.set(
+          slot.x + PRESENTATION.x,
+          SITE.shelfY + PRESENTATION.y,
+          SHELF.faceZ + PRESENTATION.z
+        ),
+        presentedPose(_q1),
+        this.reduceMotion
+          ? { tip: 0, arc: 0 }
+          : { tip: PRESENTATION.tip, arc: PRESENTATION.arc }
+      );
       book.userData.shadow = this.#shadowFor(book);
       this.books.add(book);
       this.proxies.push(book.proxy);
@@ -383,6 +434,7 @@ export class LibraryWorld {
     out.practical = THREE.MathUtils.lerp(a.practical, b.practical, e);
     out.table = THREE.MathUtils.lerp(a.table, b.table, e);
     out.heroLight = THREE.MathUtils.lerp(a.heroLight ?? 0, b.heroLight ?? 0, e);
+    out.ink = THREE.MathUtils.lerp(a.ink ?? 0, b.ink ?? 0, e);
     const haze = THREE.MathUtils.lerp(this.hazeScale[index], this.hazeScale[index + 1], e);
     out.hazeNear = THREE.MathUtils.lerp(a.hazeNear, b.hazeNear, e) * haze;
     out.hazeFar = THREE.MathUtils.lerp(a.hazeFar, b.hazeFar, e) * haze;
@@ -494,8 +546,19 @@ export class LibraryWorld {
     // Contact shadows live in world space, not under the book, so a volume in
     // flight does not carry its shadow through the air with it.
     book.getWorldPosition(_v1);
-    const lyingDown = Math.abs(book.quaternion.x) > 0.5;
-    const bottom = _v1.y - (lyingDown ? book.dimensions.depth : book.dimensions.height) * 0.5;
+
+    // A volume can be stood, leant, turned spine out, drawn into the room or
+    // laid flat on the table, so its footprint is the oriented box projected
+    // onto the floor rather than a pair of dimensions picked by guessing which
+    // way up it is. Books hang directly off an untransformed group, so the
+    // local rotation is the world rotation.
+    const { width, height, depth } = book.dimensions;
+    _v2.set(width * 0.5, 0, 0).applyQuaternion(book.quaternion);
+    _v3.set(0, height * 0.5, 0).applyQuaternion(book.quaternion);
+    _v4.set(0, 0, depth * 0.5).applyQuaternion(book.quaternion);
+    const halfX = Math.abs(_v2.x) + Math.abs(_v3.x) + Math.abs(_v4.x);
+    const halfZ = Math.abs(_v2.z) + Math.abs(_v3.z) + Math.abs(_v4.z);
+    const bottom = _v1.y - (Math.abs(_v2.y) + Math.abs(_v3.y) + Math.abs(_v4.y));
 
     // Which surface the volume is actually standing on, decided by footprint
     // rather than by height alone. A volume out in the room is not resting on
@@ -529,12 +592,8 @@ export class LibraryWorld {
 
     const spread = 1 + gap * 0.85;
     mesh.visible = true;
-    mesh.position.set(_v1.x, support + 0.012, _v1.z + book.dimensions.depth * 0.08);
-    mesh.scale.set(
-      book.dimensions.width * 2.2 * spread,
-      (lyingDown ? book.dimensions.height : book.dimensions.depth) * 4.4 * spread,
-      1
-    );
+    mesh.position.set(_v1.x, support + 0.012, _v1.z);
+    mesh.scale.set(halfX * 4.4 * spread, halfZ * 4.4 * spread, 1);
     mesh.material.opacity = ceiling * proximity * strength;
   }
 
@@ -552,8 +611,10 @@ export class LibraryWorld {
 
     // Focus follows the compositional centre, resolved against real slot
     // positions, so adding a volume needs no index arithmetic anywhere.
+    // The lens aims past the slot it is reading so the volume it draws out has
+    // somewhere to stand, so the slot it is reading is the aim taken back off.
     this.resolveCamera(exactT, _v1, _v2);
-    const centre = _v2.x;
+    const centre = _v2.x - (this.compact ? SHELF.aimCompact : SHELF.aim);
     let nearest = -1;
     let best = Infinity;
     for (let index = 0; index < SHELF.projectSlots.length; index += 1) {
@@ -645,15 +706,20 @@ export class LibraryWorld {
     if (this.mode === "scroll") {
       this.#placeHeroVolume(t);
 
-      const shelfIn = smoothstep(range(t, THREE.MathUtils.lerp(a[2], a[3], 0.35), a[4]));
+      // Nothing leaves the shelf until the traverse is on its rails. During
+      // the reveal the row is a wall of spines, which is the whole point of it.
+      const shelfIn = smoothstep(range(t, THREE.MathUtils.lerp(a[3], a[4], 0.55), a[4]));
       const shelfOut = smoothstep(range(t, a[5], a[6]));
       const attention = this.focusIndex;
       for (let index = 0; index < this.projectBooks.length; index += 1) {
         const book = this.projectBooks[index];
         const focused = index === attention ? 1 : 0;
+        // Focus is what draws a volume out of the row, so it has to be a
+        // continuous value: the shelf fades it in, the reading room takes it
+        // back, and the volume travels between its two poses on it.
         book.setFocus(focused * shelfIn * (1 - shelfOut));
         const recede = Math.max(1 - shelfIn, shelfOut * 0.8);
-        book.setDim(Math.min(0.88, recede + (attention >= 0 && !focused ? 0.2 : 0)));
+        book.setDim(Math.min(0.88, recede + (attention >= 0 && !focused ? 0.28 : 0)));
         book.present({ dt });
       }
       this.heroBook.setDim(t > a[4] && t < a[6] ? 0.5 : 0);
@@ -932,12 +998,21 @@ export class LibraryWorld {
     };
   }
 
+  /**
+   * How far a volume is from the pose the shelf chapter says it should be in.
+   *
+   * A volume in the collection is no longer parked at one transform: it lives
+   * on a blend between shelved and presented. The invariant that matters after
+   * an inspection is therefore that it has returned to that blend, not that it
+   * has returned to the board.
+   */
   restorationError(index) {
     const book = this.projectBooks[index];
-    if (!book?.basePose) return null;
+    if (!book?.shelfPose) return null;
+    book.composeTarget(book.presence, _v1, _q1);
     return {
-      position: book.position.distanceTo(book.basePose.position),
-      rotation: 1 - Math.abs(book.quaternion.dot(book.basePose.quaternion)),
+      position: book.position.distanceTo(_v1),
+      rotation: 1 - Math.abs(book.quaternion.dot(_q1)),
       scale: book.scale.distanceTo(book.basePose.scale)
     };
   }

@@ -20,10 +20,13 @@ export const SITE = {
   shelfY: SHELF.baseY,
   shelfPitch: 3.4,
   boardThickness: 0.28,
-  caseBackZ: -0.62,
-  caseFrontZ: 0.33,
+  // Volumes are shelved spine out, so the case has to be deep enough to
+  // swallow the widest board in the collection. Deriving that depth means a
+  // wider volume can never end up standing proud of its own carcass.
+  caseBackZ: SHELF.faceZ - SHELF.deepest - 0.16,
+  caseFrontZ: SHELF.faceZ + 0.22,
   caseHalfWidth: 9.6,
-  wallZ: -0.92,
+  wallZ: SHELF.faceZ - SHELF.deepest - 0.68,
   table: { x: 4.4, y: -6.4, z: 2.9, width: 9.2, depth: 4.4 }
 };
 
@@ -320,24 +323,61 @@ export function buildArchitecture({ surfaces, quality }) {
   const tint = new THREE.Color();
   const placements = [];
 
-  const collectionHalf = SHELF.span / 2;
+  // The collection leans, so the room it needs is not its footprint: a volume
+  // tipped by a degree and a half reaches further at the head than at the
+  // board. The stock is brought up to that reach and no further, because the
+  // block on the left is what the row is resting against.
+  const head = SHELF.all[0];
+  const tail = SHELF.emptySlot;
+  const collectionFrom = head.pivot - head.height * Math.tan(head.lean) - 0.03;
+  const collectionTo = tail.pivot + tail.width + 0.03;
   const flankRanges = [
-    [-SITE.caseHalfWidth + 0.35, -collectionHalf - 0.25],
-    [collectionHalf + 0.25, SITE.caseHalfWidth - 0.35]
+    [-SITE.caseHalfWidth + 0.35, collectionFrom],
+    [collectionTo, SITE.caseHalfWidth - 0.35]
   ];
 
+  /**
+   * Fills a run of shelf with stock, spine out and pulled to the front edge.
+   *
+   * Every volume is placed by the board plane it stands on rather than by its
+   * centre, exactly as the collection is, so lean never sinks a volume into
+   * the shelf. Where the lean opens up between neighbours the pair closes at
+   * the head, and the run carries that wedge as well as the thickness.
+   *
+   * A run always finishes square. The last volumes before the collection are
+   * the block it is resting against, and a buttress does not lean.
+   */
   const fillRow = (y, from, to) => {
-    let x = from;
-    while (x < to - 0.2) {
+    let pivot = from;
+    let lean = 0;
+    let previous = null;
+    while (pivot < to - 0.2) {
       const thickness = 0.14 + random() * 0.34;
-      if (x + thickness > to) break;
       const height = 1.75 + random() * 0.95;
       const depth = 0.72 + random() * 0.32;
-      const lean = random() > 0.94 ? (random() - 0.5) * 0.16 : (random() - 0.5) * 0.012;
+
+      // Most of a shelf is square. A few volumes have slack to fall into, and
+      // once one has leant its neighbour tends to follow it over.
+      const settle = random();
+      if (to - pivot < 1.1) lean = (random() - 0.5) * 0.008;
+      else if (settle > 0.87) lean = (0.05 + random() * 0.1) * (random() > 0.55 ? 1 : -1);
+      else if (Math.abs(lean) > 0.03 && settle > 0.45) lean *= 0.5 + random() * 0.35;
+      else lean = (random() - 0.5) * 0.02;
+
+      if (previous) {
+        const shared = Math.min(previous.height, height);
+        pivot += previous.gap +
+          Math.max(0, shared * (Math.tan(lean) - Math.tan(previous.lean)));
+      }
+      const run = thickness / Math.cos(lean);
+      if (pivot + run > to) break;
+
       placements.push({
-        x: x + thickness / 2,
-        y: y + height / 2,
-        z: SITE.caseBackZ + 0.22 + depth / 2,
+        // Centre solved from the board plane, so the volume rests on the shelf
+        // along exactly one edge however far it is leaning.
+        x: pivot + (thickness * Math.cos(lean) - height * Math.sin(lean)) / 2,
+        y: y + (thickness * Math.abs(Math.sin(lean)) + height * Math.cos(lean)) / 2,
+        z: SHELF.faceZ - depth / 2,
         sx: thickness,
         sy: height,
         sz: depth,
@@ -346,7 +386,8 @@ export function buildArchitecture({ surfaces, quality }) {
         sat: 0.1 + random() * 0.26,
         light: 0.08 + random() * 0.13
       });
-      x += thickness + 0.012 + random() * 0.02;
+      previous = { height, lean, gap: 0.012 + random() * 0.024 };
+      pivot += run;
     }
   };
 
@@ -382,15 +423,20 @@ export function buildArchitecture({ surfaces, quality }) {
   // The empty slot at the end of the collection, waiting for the next volume.
   const reserved = new THREE.Group();
   reserved.name = "reserved-slot";
-  reserved.position.set(SHELF.emptySlot.x, SITE.shelfY, SHELF.restZ);
+  reserved.position.set(SHELF.emptySlot.x, SITE.shelfY, SHELF.emptySlot.z);
   const reservedMaterial = track(new THREE.MeshBasicMaterial({
     color: 0xc6a97a,
     transparent: true,
     opacity: 0,
     depthWrite: false
   }));
-  const outline = new THREE.Mesh(track(new THREE.PlaneGeometry(SHELF.emptySlot.width * 0.9, 0.028)), reservedMaterial);
-  outline.position.set(0, 0.02, 0.3);
+  // Spine out, the reserved place is a footprint on the board rather than a
+  // line across the front of it: the shape a volume would stand in.
+  const outline = new THREE.Mesh(
+    track(new THREE.PlaneGeometry(SHELF.emptySlot.width * 0.82, SHELF.emptySlot.depth * 0.88)),
+    reservedMaterial
+  );
+  outline.position.set(0, 0.02, 0);
   outline.rotation.x = -Math.PI * 0.5;
   reserved.add(outline);
   bookcase.add(reserved);

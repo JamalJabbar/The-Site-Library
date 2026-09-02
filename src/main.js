@@ -1,6 +1,6 @@
 import "./style.css";
 
-import { PROJECTS, HERO_VOLUME } from "./data/projects.js";
+import { PROJECTS, HERO_VOLUME, SHELF } from "./data/projects.js";
 import { CHAPTERS } from "./data/chapters.js";
 import { LibraryWorld, supportsWebGL, detectQuality } from "./three/World.js";
 import { createConductor, gsap, ScrollTrigger } from "./animation/conductor.js";
@@ -57,14 +57,23 @@ function openVolume(index, source) {
   inspection.open(book, source);
 }
 
-/** Scrolls the shelf so a volume sits at the compositional centre. */
+/**
+ * Scrolls the shelf so a volume sits at the compositional centre.
+ *
+ * The traverse is a straight rail between two authored slots, so the point on
+ * it that reads a volume is that volume's own place along the rail. Spacing
+ * follows the thickness of the bindings and the lean of the row, neither of
+ * which is regular, so stepping by index would stop between volumes.
+ */
 function bringVolumeIntoView(index) {
   if (!conductor || !world) return Promise.resolve();
   const anchors = conductor.state.anchors;
-  const from = anchors[4];
-  const to = anchors[5];
-  const span = Math.max(1, PROJECTS.length - 1);
-  const target = from + ((to - from) * index) / span;
+  const first = SHELF.projectSlots[0].x;
+  const rail = SHELF.emptySlot.x - first;
+  const along = Math.abs(rail) < 1e-6
+    ? 0
+    : (SHELF.projectSlots[index].x - first) / rail;
+  const target = anchors[4] + (anchors[5] - anchors[4]) * along;
   const y = conductor.scrollForProgress(target);
   if (reduceMotion) {
     window.scrollTo(0, y);
@@ -208,7 +217,7 @@ function frame(time) {
   processHover();
 
   const channels = world.update(smooth, dt);
-  ui.setSurfaceFromGround(channels.ground);
+  ui.setSurface(channels.ink);
   ui.setBackdrop(channels.backdrop);
   ui.setGrain(channels.grain);
   world.render(dt);
@@ -290,7 +299,7 @@ async function boot() {
         smooth = t;
         conductor.state.exact = t;
         const channels = world.update(t, 1 / 60, true);
-        ui.setSurfaceFromGround(channels.ground);
+        ui.setSurface(channels.ink);
         ui.setBackdrop(channels.backdrop);
         ui.setGrain(channels.grain);
         world.render(1 / 60);

@@ -12,7 +12,9 @@
   --cream: #f8f4eb;
 
   --ink: #151310;
-  --soft-ink: #35302a;
+  /* Secondary ink, not faint ink. It carries the deck, the descriptions and
+     the definitions, all of which are read rather than glanced at. */
+  --soft-ink: #1d1913;
 
   --walnut: #281d17;
   --walnut-dark: #18110e;
@@ -21,8 +23,10 @@
   --forest: #1f2b25;
   --navy: #1c2632;
 
-  --brass: #ad8955;
-  --brass-soft: #c6a776;
+  --brass: #a8834e;
+  /* Brass reads against walnut, not against the near-black the copy plate
+     lays down, so the dark surface carries a lighter alloy of it. */
+  --brass-soft: #dcc6a2;
 
   --line: rgba(27, 23, 18, 0.18);
 
@@ -47,15 +51,32 @@
   --accent: var(--brass);
   --grain: 0.15;
 
+  /*
+    The tone a chapter's copy is read off.
+
+    Type sits on a live render whose luminance changes with every frame, so
+    legibility cannot be left to whatever the camera happens to be pointing at.
+    Each chapter lays a soft plate of the room's own light under the column its
+    copy occupies: the room's shadow on a dark page, the room's daylight on a
+    pale one. It reads as falloff rather than as a panel, it turns over with
+    the ink so the two are never mismatched, and it is what makes the contrast
+    of every line a property of the design instead of an accident of the shot.
+  */
+  --scrim: 244, 240, 231;
+  --scrim-strength: 0.9;
+  --scrim-angle: 270deg;
+
   color-scheme: light;
 }
 
 [data-surface="dark"] {
   --fg: var(--cream);
-  --fg-soft: rgba(248, 244, 235, 0.66);
+  --fg-soft: rgba(248, 244, 235, 0.84);
   --hairline: rgba(248, 244, 235, 0.2);
   --veil: rgba(21, 18, 15, 0.72);
   --accent: var(--brass-soft);
+  --scrim: 9, 6, 4;
+  --scrim-strength: 0.93;
   color-scheme: dark;
 }
 
@@ -291,7 +312,7 @@ button {
   font-style: italic;
   letter-spacing: 0.02em;
   text-transform: none;
-  opacity: 0.6;
+  opacity: 0.74;
 }
 
 .nav__cta {
@@ -343,14 +364,36 @@ button {
   align-items: center;
   gap: 9px;
   color: var(--fg);
-  opacity: 0.72;
+  opacity: 0.88;
   pointer-events: none;
   transition: color 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 500ms ease;
 }
 
+/*
+  The chapter ledger is the one piece of chrome standing in the bottom corner
+  of the frame with nothing behind it, and the corner of a room is exactly
+  where a bookcase is darkest. The masthead earns its legibility from its own
+  veil; this earns it the same way, with a plate soft enough to read as the
+  falloff of the room rather than as a bar laid across it.
+*/
+.ledger::before {
+  content: "";
+  position: absolute;
+  inset: -18px -46px -22px -32px;
+  z-index: -1;
+  background: radial-gradient(150% 190% at 38% 58%,
+    rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 0%,
+    rgba(var(--scrim), calc(var(--scrim-strength) * 0.66)) 44%,
+    rgba(var(--scrim), 0) 100%);
+  transition: background 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .ledger__rule { width: 14px; height: 1px; background: currentColor; opacity: 0.5; }
-.ledger__total { opacity: 0.45; }
-.ledger__label { margin-left: 10px; opacity: 0.66; }
+/* The ledger is a hierarchy, not a fade: the chapter you are in, the chapter
+   count, the chapter's name. Each step down is still a step a reader has to be
+   able to read. */
+.ledger__total { opacity: 0.62; }
+.ledger__label { margin-left: 10px; opacity: 0.88; }
 
 .ledger__track {
   grid-column: 1 / -1;
@@ -390,14 +433,23 @@ main { position: relative; z-index: 3; }
   height: 100svh;
   padding: var(--masthead) var(--gutter) clamp(64px, 9vh, 104px);
   pointer-events: none;
+  /*
+    A chapter paints inside its own frame and nowhere else. Stages are sticky,
+    so the one arriving and the one leaving share the viewport for a whole
+    screen of scrolling; without this, copy that outgrew its stage would be
+    read over the chapter before it and the chapter after it at the same time.
+    Nothing should ever actually reach this clip: the audit in
+    scripts/text-audit.js fails if any chapter's copy exceeds its own stage.
+  */
+  overflow: hidden;
 }
 
 .chapter__stage > * { pointer-events: auto; }
 
 /*
-  Local contrast, not a blanket. Copy in the dark chapters can fall over a lit
-  cover or a pale binding, so the column it occupies gets a soft gradient in the
-  room's own shadow colour. It sits between the renderer and the type, reads as
+  Local contrast, not a blanket. The copy column gets a soft plate in the tone
+  the page is currently set in, angled so it falls away toward the side the
+  room is doing the work. It sits between the renderer and the type, reads as
   falloff rather than as a panel, and never covers the whole frame.
 */
 .chapter__stage::after {
@@ -406,26 +458,35 @@ main { position: relative; z-index: 3; }
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  background: linear-gradient(var(--scrim-angle),
+    rgba(var(--scrim), var(--scrim-strength)) 0%,
+    rgba(var(--scrim), calc(var(--scrim-strength) * 0.86)) 24%,
+    rgba(var(--scrim), calc(var(--scrim-strength) * 0.4)) 48%,
+    rgba(var(--scrim), 0) 74%);
+  transition: background 620ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-surface="dark"] .works::after,
-[data-surface="dark"] .reading::after {
-  opacity: 1;
-  background: linear-gradient(270deg,
-    rgba(12, 8, 5, 0.72) 0%,
-    rgba(12, 8, 5, 0.44) 34%,
-    rgba(12, 8, 5, 0) 62%);
-}
+/* The copy column, chapter by chapter. */
+.works, .reading, .studio { --scrim-angle: 270deg; }
+.binding, .commission { --scrim-angle: 90deg; }
 
-[data-surface="dark"] .binding::after,
-[data-surface="dark"] .commission::after {
-  opacity: 1;
-  background: linear-gradient(90deg,
-    rgba(12, 8, 5, 0.72) 0%,
-    rgba(12, 8, 5, 0.44) 34%,
-    rgba(12, 8, 5, 0) 62%);
+/*
+  The frontispiece is the one page with no plate. Its room is a bleached field
+  the type is already set against, and the volume is meant to pass through the
+  headline rather than sit behind a screen.
+*/
+.frontispiece::after { background: none; }
+
+/*
+  Two captions on the centre line, so the plate is a band across the middle
+  rather than a wash from one side.
+*/
+.stacks::after {
+  background: linear-gradient(180deg,
+    rgba(var(--scrim), 0) 8%,
+    rgba(var(--scrim), calc(var(--scrim-strength) * 0.92)) 34%,
+    rgba(var(--scrim), calc(var(--scrim-strength) * 0.92)) 66%,
+    rgba(var(--scrim), 0) 92%);
 }
 
 /* ---- 01 Frontispiece ---------------------------------------------------- */
@@ -460,6 +521,25 @@ main { position: relative; z-index: 3; }
 }
 
 .frontispiece__title { margin: 0; }
+
+/*
+  The lower line is the one piece of type on the page that crosses the volume.
+  That is the composition: the book passes in front of "Websites" and behind
+  "worth keeping.", the way a photographed object would. It also means a third
+  of the word is set in near-black ink on a dark oxblood binding.
+
+  So the line carries the room's own light with it. On the bleached field the
+  halo is cream on cream and cannot be seen; where the word crosses the volume
+  it lifts the binding just far enough behind the strokes to read, and looks
+  like light wrapping the type rather than a shadow under it.
+*/
+.line--lower {
+  text-shadow:
+    0 0 30px rgba(244, 240, 231, 0.34),
+    0 0 72px rgba(244, 240, 231, 0.22);
+}
+
+[data-surface="dark"] .line--lower { text-shadow: none; }
 
 .line {
   position: fixed;
@@ -667,7 +747,9 @@ main { position: relative; z-index: 3; }
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--fg);
-  opacity: 0.34;
+  /* These are real buttons and the only keyboard route into the shelf, so the
+     unselected ones are held back rather than hidden. */
+  opacity: 0.72;
   transition: opacity 320ms ease;
 }
 
@@ -687,15 +769,53 @@ main { position: relative; z-index: 3; }
 .rail__item:hover::after,
 .rail__item[aria-current="true"]::after { transform: scaleX(1); }
 
-.rail__index { opacity: 0.55; margin-right: 8px; }
+.rail__index { opacity: 0.78; margin-right: 8px; }
+
+/*
+  Copy revealed by scroll starts held.
+
+  Every chapter timeline brings its blocks in from nothing. GSAP applies a
+  tween's opening state the first time that tween actually runs, which on a
+  first visit is after the block has already had its chance to appear: a reader
+  who loads the page and scrolls straight down catches the reading room's list
+  and the studio's facts lit while their chapters are still climbing the frame,
+  over the chapter they are climbing past. Declaring the held state here makes
+  it true from the first painted frame, so the choreography animates away from
+  a fact rather than toward one.
+
+  The blocks that already declare it for themselves are left where they are,
+  next to the rest of their own styling.
+*/
+.reading__lede,
+.catalogue li,
+.binding__lede,
+.process,
+.studio__lede,
+.studio__lead,
+.studio__quote,
+.studio__facts > div,
+.commission__body,
+.commission__ask,
+.commission__cta,
+.commission__email,
+.colophon { opacity: 0; }
 
 /* ---- 04 Reading room ----------------------------------------------------- */
 
+/*
+  Column widths are set by the display line they have to hold, not by a
+  comfortable measure for the body copy. A heading authored to break in two
+  and then broken again by the column reads as a mistake, and every extra line
+  it takes is a line the chapter has to find room for.
+*/
 .reading {
   display: grid;
-  grid-template-columns: 1fr min(46ch, 42vw);
+  grid-template-columns: 1fr min(52ch, 44vw);
   align-content: center;
-  gap: clamp(28px, 5vw, 76px);
+  /* Columns can breathe; rows cannot. A chapter is one screen tall, and the
+     lede and the catalogue have to share it at any height. */
+  column-gap: clamp(28px, 5vw, 76px);
+  row-gap: clamp(14px, 2.4vh, 30px);
 }
 
 .reading__lede { grid-column: 2; align-self: center; }
@@ -713,7 +833,7 @@ main { position: relative; z-index: 3; }
 
 .reading__lede p {
   max-width: 34ch;
-  margin-top: 22px;
+  margin-top: clamp(12px, 1.9vh, 22px);
   font-family: var(--serif);
   font-size: 1.06rem;
   line-height: 1.55;
@@ -727,14 +847,23 @@ main { position: relative; z-index: 3; }
   border-top: 1px solid var(--hairline);
 }
 
+/*
+  Index in the first column, heading and description in the second. Without the
+  explicit placement the description auto-flows into the index column, wraps to
+  one word a line, and takes the chapter three hundred pixels past the bottom
+  of its own stage.
+*/
 .catalogue li {
   display: grid;
-  grid-template-columns: 3.4rem 1fr;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
   gap: 0 18px;
-  padding: 20px 0 18px;
+  padding: clamp(11px, 1.7vh, 20px) 0;
   border-bottom: 1px solid var(--hairline);
   transition: padding-left 460ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+.catalogue li h3,
+.catalogue li p { grid-column: 2; }
 
 .catalogue li:hover { padding-left: 10px; }
 
@@ -757,9 +886,10 @@ main { position: relative; z-index: 3; }
 }
 
 .catalogue p {
-  margin-top: 6px;
+  margin-top: 5px;
   font-family: var(--serif);
   font-size: 0.98rem;
+  line-height: 1.45;
   color: var(--fg-soft);
 }
 
@@ -769,14 +899,15 @@ main { position: relative; z-index: 3; }
   display: grid;
   grid-template-columns: min(40ch, 40vw) 1fr;
   align-content: center;
-  gap: clamp(28px, 5vw, 80px);
+  column-gap: clamp(28px, 5vw, 80px);
+  row-gap: 0;
 }
 
 .binding__lede { grid-column: 1; align-self: center; }
 
 .binding__lede p {
   max-width: 32ch;
-  margin-top: 20px;
+  margin-top: clamp(10px, 1.7vh, 20px);
   font-family: var(--serif);
   font-size: 1.02rem;
   color: var(--fg-soft);
@@ -785,18 +916,23 @@ main { position: relative; z-index: 3; }
 .process {
   grid-column: 1;
   align-self: center;
-  margin-top: 30px;
+  margin-top: clamp(6px, 1vh, 18px);
   max-width: 46ch;
 }
 
+/* Number in the first column, step in the second. Same reason as the
+   catalogue: auto-flow would drop the description into the number column. */
 .process__step {
   display: grid;
-  grid-template-columns: 3.2rem 1fr;
+  grid-template-columns: 3.2rem minmax(0, 1fr);
   gap: 0 16px;
-  padding: 15px 0;
+  padding: clamp(4px, 0.7vh, 10px) 0;
   border-top: 1px solid var(--hairline);
   opacity: 0.16;
 }
+
+.process__step h3,
+.process__step p { grid-column: 2; }
 
 .process__step span {
   font-family: var(--serif);
@@ -813,9 +949,10 @@ main { position: relative; z-index: 3; }
 }
 
 .process__step p {
-  margin-top: 5px;
+  margin-top: 3px;
   font-family: var(--serif);
   font-size: 0.95rem;
+  line-height: 1.5;
   color: var(--fg-soft);
 }
 
@@ -825,7 +962,7 @@ main { position: relative; z-index: 3; }
    so the whole editorial column sits there as one stacked block. */
 .studio {
   display: grid;
-  grid-template-columns: 1fr min(52ch, 50vw);
+  grid-template-columns: 1fr min(58ch, 52vw);
   align-content: center;
   gap: clamp(28px, 5vw, 88px);
 }
@@ -886,7 +1023,8 @@ main { position: relative; z-index: 3; }
 .commission__body {
   align-self: center;
   justify-self: start;
-  max-width: 40ch;
+  /* Wide enough for the closing line to stay one line at display size. */
+  max-width: min(60vw, 900px);
 }
 
 .commission__body h2 { font-size: var(--display-lg); }
@@ -896,7 +1034,10 @@ main { position: relative; z-index: 3; }
   font-family: var(--serif);
   font-size: 1.14rem;
   font-style: italic;
-  color: var(--fg-soft);
+  /* The question that carries the page into its call to action. It is asked,
+     not annotated, so it is set in the page's own ink. */
+  color: var(--fg);
+  opacity: 0.86;
 }
 
 .commission__cta {
@@ -1321,6 +1462,30 @@ main { position: relative; z-index: 3; }
    ========================================================================== */
 
 @media (max-width: 1024px) {
+  /*
+    The copy stops being a column and starts being the page, so the plate has
+    to stop being a wash from one side. Below this width it lies across the
+    whole frame, opening at the top where the room is doing the work and
+    closing toward the copy underneath.
+  */
+  .chapter__stage::after {
+    background: linear-gradient(180deg,
+      rgba(var(--scrim), 0) 0%,
+      rgba(var(--scrim), calc(var(--scrim-strength) * 0.84)) 24%,
+      rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 62%,
+      rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 100%);
+  }
+
+  .frontispiece::after { background: none; }
+
+  .stacks::after {
+    background: linear-gradient(180deg,
+      rgba(var(--scrim), 0) 6%,
+      rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 30%,
+      rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 70%,
+      rgba(var(--scrim), 0) 94%);
+  }
+
   .reading { grid-template-columns: 1fr min(52ch, 56vw); }
   .binding { grid-template-columns: min(52ch, 56vw) 1fr; }
   .studio { grid-template-columns: 1fr; gap: 22px; align-content: center; }
@@ -1358,7 +1523,10 @@ main { position: relative; z-index: 3; }
 
   .frontispiece__deck { width: min(300px, calc(100vw - 40px)); }
 
-  .works { grid-template-columns: 1fr; grid-template-rows: 1fr auto auto; }
+  /* The metadata card and the index rail stack instead of sharing a line, so
+     they need a gutter between them: without one the card's entrance travel
+     lands it on the first row of the rail. */
+  .works { grid-template-columns: 1fr; grid-template-rows: 1fr auto auto; row-gap: 16px; }
   .works__meta,
   .works__reserved { grid-column: 1; width: auto; max-width: 26ch; justify-self: end; }
 
@@ -1370,8 +1538,8 @@ main { position: relative; z-index: 3; }
   .process { grid-column: 1; }
   .catalogue li { grid-template-columns: 2.6rem 1fr; padding: 14px 0; }
   .catalogue p { font-size: 0.92rem; }
-  .process { margin-top: 16px; }
-  .process__step { padding: 11px 0; }
+  .process { margin-top: 12px; }
+  .process__step { padding: 9px 0; }
 
   .volume {
     grid-template-columns: 1fr;
@@ -1458,16 +1626,33 @@ main { position: relative; z-index: 3; }
 .reduced-motion .cursor { display: none !important; }
 .reduced-motion .grain { opacity: 0.06; }
 
+/* Nothing is choreographed, so nothing stays held. */
 .reduced-motion .caption,
 .reduced-motion .works__meta,
 .reduced-motion .works__reserved,
 .reduced-motion .rail,
 .reduced-motion .process__step,
 .reduced-motion .binding__lede,
+.reduced-motion .process,
+.reduced-motion .reading__lede,
+.reduced-motion .catalogue li,
+.reduced-motion .studio__lede,
+.reduced-motion .studio__lead,
+.reduced-motion .studio__quote,
+.reduced-motion .studio__facts > div,
+.reduced-motion .commission__body,
+.reduced-motion .commission__ask,
+.reduced-motion .commission__cta,
+.reduced-motion .commission__email,
+.reduced-motion .colophon,
+.reduced-motion .chapter__stage,
 .reduced-motion .line {
   opacity: 1 !important;
   transform: none !important;
 }
+
+/* An unlit step of the process list is still legible, as it is in motion. */
+.reduced-motion .process__step { opacity: 0.55 !important; }
 
 /* Both captions share one grid cell, so only the closing one is kept. */
 .reduced-motion .caption--room { display: none; }
