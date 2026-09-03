@@ -264,6 +264,7 @@ function frame(time) {
   const channels = world.update(smooth, dt);
   ui.setSurface(channels.ink);
   ui.setBackdrop(channels.backdrop);
+  ui.setScrim(channels.scrim);
   ui.setGrain(channels.grain);
   world.render(dt);
   world.samplePerformance(raw);
@@ -350,6 +351,7 @@ async function boot() {
         const channels = world.update(t, 1 / 60, true);
         ui.setSurface(channels.ink);
         ui.setBackdrop(channels.backdrop);
+        ui.setScrim(channels.scrim);
         ui.setGrain(channels.grain);
         world.render(1 / 60);
         return world.stats();

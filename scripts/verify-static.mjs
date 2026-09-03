@@ -7,9 +7,10 @@
 import { readFile } from "node:fs/promises";
 import { PROJECTS, HERO_VOLUME, SHELF } from "../src/data/projects.js";
 import { CHAPTERS, KEYFRAMES, PRESENTATION } from "../src/data/chapters.js";
+import { auditSurface, auditDimming } from "./surface-audit.mjs";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [html, css, main, world, environment, book, architecture, ledger, conductor] =
+const [html, css, main, world, environment, book, architecture, ledger, conductor, ui] =
   await Promise.all([
     read("../index.html"),
     read("../src/style.css"),
@@ -19,7 +20,8 @@ const [html, css, main, world, environment, book, architecture, ledger, conducto
     read("../src/three/Book3D.js"),
     read("../src/three/architecture.js"),
     read("../src/data/chapters.js"),
-    read("../src/animation/conductor.js")
+    read("../src/animation/conductor.js"),
+    read("../src/ui/interface.js")
   ]);
 
 const failures = [];
@@ -164,11 +166,43 @@ check(declares(".chapter__stage", "overflow: hidden"),
   "Chapter stages must clip: two sticky stages share the viewport at every handover");
 
 // Type sits on a live render, so contrast is laid down by the design rather
-// than left to whatever the camera happens to be pointing at.
-check(css.includes("--scrim:") && css.includes("--scrim-strength:"),
-  "Copy needs a plate of its own; contrast cannot be left to the shot");
+// than left to whatever the camera happens to be pointing at. The room is
+// dimmed under the copy, in the tone the page is currently set in.
+check(css.includes("--scrim:") && declares(".scrim", "--scrim-strength"),
+  "Copy needs the room dimmed under it; contrast cannot be left to the shot");
 check(declares('[data-surface="dark"]', "--scrim:"),
-  "The plate must turn over with the ink, or the two disagree at every surface change");
+  "The dimming must turn over with the ink, or the two disagree at every surface change");
+
+// It is one layer over the whole viewport, not a plate inside each chapter.
+// A plate is a box, and at a handover two sticky stages share the frame, so
+// the box edge drew a hard horizontal line across the picture and the dimmed
+// column read as a strip laid over the room rather than the room going dark.
+check(declares(".scrim", "position: fixed"),
+  "The dimming must be fixed to the viewport, or its edges cut across the frame");
+check(!/\.chapter__stage::after|\.stacks::after|\.frontispiece::after/.test(css),
+  "Chapter stages must not carry plates of their own again");
+
+// How far it goes is an authored channel, interpolated with the light it
+// belongs to, so the descent into the archive has no step in it anywhere.
+check(KEYFRAMES.every((frame) => frame.world.scrim != null),
+  "Every keyframe must author how far the room is dimmed");
+check(KEYFRAMES[0].world.scrim === 0,
+  "The frontispiece is a bleached field the type is already set against: it takes no dimming");
+// What matters is not how far the dimming moves between two keyframes but how
+// fast, and those are different questions: keyframes sit at wildly different
+// distances apart, so a large change across a long chapter is gentler than a
+// small one across a short handover. The rate is measured below, against the
+// scroll it actually happens over.
+check(/setScrim/.test(main) && /setScrim/.test(ui) && /out\.scrim/.test(world),
+  "The dimming channel must reach the page every frame, the way the grain does");
+
+// An edge in time is as visible as an edge in space. The room has to descend
+// into shadow slowly enough that no single screen of scrolling delivers a
+// noticeable part of it, or the dimming arrives as the plate used to: at once.
+const dimming = auditDimming();
+check(dimming.steepest <= 0.34,
+  `The room dims by ${(dimming.steepest * 100).toFixed(0)}% of the scrim in one screen at ` +
+  `${dimming.chapter} ${dimming.local.toFixed(2)}, which reads as a step rather than a descent`);
 
 // Every list that pairs an index with a description places both of its
 // columns. Left to auto-flow the description drops into the index column, sets
@@ -199,6 +233,62 @@ check(conductor.includes("totalDuration(1)"),
 check(conductor.includes('start: "bottom bottom"') &&
   conductor.includes(".chapter__stage`, { opacity: 0"),
   "Each chapter must dim as its stage leaves the frame");
+
+/* ---- the page turn -------------------------------------------------- */
+
+// Turning the page over swaps the ink, the plate under it, the hairlines and
+// the chrome at once, and a reader is watching all of it happen. Three things
+// make that bearable, and each of them was broken at some point.
+
+// One. It happens once. The document used to turn three times: to dark in the
+// stacks, back to a white page for the studio, and to dark again for the
+// commission. Every chapter after the frontispiece is read in pale type.
+const turns = auditSurface();
+check(turns.length === 1 && turns[0].to === "dark",
+  `The page must turn over exactly once, to dark; it turns ${turns.length} time(s)`);
+
+// Two. It happens in a gap. All three of those turns landed while copy was
+// lit, so the reader watched the ground change under a line they were part
+// way through. This one belongs to the frontispiece's exit: the hero is on
+// its way out and the next chapter's copy has not arrived yet.
+turns.forEach((turn) => {
+  check(!turn.underCopy,
+    `The page turns at ${turn.chapter} ${turn.local.toFixed(3)}, under copy that is lit`);
+});
+check(turns.every((turn) => turn.t < 0.08),
+  "The page must turn as the frontispiece leaves, not somewhere down the document");
+
+// Three. A pale page is never dimmed. Dimming guarantees contrast against a
+// room whose luminance is whatever the lens happens to be pointing at, and
+// that is only ever a problem for pale type: the ledger sets the page in dark
+// ink exactly where the room is bright. On a pale page all it can do is wash
+// the render cream, and that wash was the white blur copy used to arrive on.
+// The page is pale only up to the turn, so nothing before it may carry any.
+const paleFrames = KEYFRAMES.filter((_, index) => index === 0);
+paleFrames.forEach((frame) => {
+  check(frame.world.scrim === 0,
+    `${frame.id} is read on a pale page and must take no dimming, or the copy arrives on a cream wash`);
+});
+
+// Every property that turns with the surface runs off one authored duration,
+// so the plate cannot reach the new tone before the type does and leave the
+// copy the old colour on the new ground for the difference between them.
+check(css.includes("--turn:"), "The page turn needs one authored duration");
+["body", ".stage", ".ledger", ".ledger::before", ".scrim"].forEach((selector) => {
+  const rule = ruleFor(selector);
+  if (rule && /transition:/.test(rule.text)) {
+    check(!/transition:[^;]*\b(color|background|background-color)\s+\d+m?s/.test(rule.text),
+      `${selector} turns with the surface on its own duration instead of var(--turn)`);
+  }
+});
+
+// Four. The ground under the render turns over too. Nothing should ever see
+// it, but a lost WebGL context or a slow first paint puts it on screen, and
+// a pale ground under cream type is a blank page.
+check(declares(":root", "--page:") && declares('[data-surface="dark"]', "--page:"),
+  "The page ground must turn over with the ink, or a dropped render leaves cream type on cream");
+check(!ruleFor("body")?.text.includes("background: var(--parchment)"),
+  "body must take the ground that turns over, not a fixed pale one");
 
 /* ---- interface ----------------------------------------------------- */
 

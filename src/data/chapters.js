@@ -24,7 +24,7 @@ export const CHAPTERS = [
   { id: "selected-works", number: "03", label: "Selected Works", nav: "Selected Works", weight: 6.5, tone: "dark" },
   { id: "reading-room", number: "04", label: "The Reading Room", nav: "Reading Room", weight: 2.4, tone: "dark" },
   { id: "binding", number: "05", label: "Binding", nav: "Binding", weight: 3.4, tone: "dark" },
-  { id: "studio", number: "06", label: "The Studio", nav: "Studio", weight: 2.4, tone: "light" },
+  { id: "studio", number: "06", label: "The Studio", nav: "Studio", weight: 2.4, tone: "dark" },
   { id: "commission", number: "07", label: "Commission", nav: "Contact", weight: 2.6, tone: "dark" }
 ];
 
@@ -86,6 +86,14 @@ export const PRESENTATION = {
  *             not when the fog says so. The scrim under the copy turns over on
  *             the same value, so ink and plate can never disagree.
  * dust        motes in the shelf light
+ * scrim       how far the room is dimmed under the copy, 0 for not at all.
+ *             One layer across the whole viewport rather than a plate inside
+ *             each chapter: a plate is a box, and a box has edges, so two
+ *             sticky chapters sharing the frame at a handover met along a
+ *             hard horizontal line and a band of dimmed room read as a strip
+ *             laid over the picture. Interpolated every frame like the light
+ *             it belongs to, so the room descends into shadow continuously
+ *             and there is no step anywhere in the document.
  * grain       film grain over the page
  * exposure    tone-mapping exposure
  */
@@ -111,7 +119,7 @@ export const KEYFRAMES = [
       // an abstract cream field. Opening these two distances is the reveal.
       key: 2.05, env: 0.85, practical: 0, table: 0, heroLight: 1,
       hazeNear: 7.72, hazeFar: 9.78, ground: "#f0ece3", ink: 0,
-      dust: 0, grain: 0.14, exposure: 1.0
+      scrim: 0, dust: 0, grain: 0.14, exposure: 1.0
     }
   },
   {
@@ -125,11 +133,16 @@ export const KEYFRAMES = [
       mobile: { position: [0.05, 1.25, 11.5], target: [0.15, 0.72, 2.6], fov: 42 }
     },
     world: {
-      key: 1.85, env: 0.72, practical: 0.4, table: 0, heroLight: 0.72,
-      // Already a third of the way over: the key light drops away well before
-      // the haze does, so the page turns as the room does, not after it.
-      hazeNear: 7.4, hazeFar: 12.5, ground: "#ddd3c1", ink: 0.42,
-      dust: 0.12, grain: 0.16, exposure: 1.04
+      key: 1.7, env: 0.6, practical: 0.75, table: 0, heroLight: 0.38,
+      // The page turns here, and this is the only place in the document it
+      // turns. It happens while the frontispiece is still sliding out of the
+      // frame: the room drops into shadow, the copy goes to cream, and there
+      // is nothing on screen being read across the change. Every chapter
+      // after this one is set in pale type on a dark ground and stays there,
+      // so a reader meets one handover and then never sees the page move
+      // under them again.
+      hazeNear: 7.8, hazeFar: 22, ground: "#54432f", ink: 1,
+      scrim: 0.55, dust: 0.26, grain: 0.17, exposure: 1.02
     }
   },
   {
@@ -145,7 +158,7 @@ export const KEYFRAMES = [
     world: {
       key: 1.6, env: 0.66, practical: 1.1, table: 0, heroLight: 0.18,
       hazeNear: 10, hazeFar: 48, ground: "#4c3b2c", ink: 1,
-      dust: 0.5, grain: 0.19, exposure: 0.99
+      scrim: 0.72, dust: 0.5, grain: 0.19, exposure: 0.99
     }
   },
   {
@@ -165,7 +178,7 @@ export const KEYFRAMES = [
     world: {
       key: 1.0, env: 0.44, practical: 1.5, table: 0, ink: 1,
       hazeNear: 12, hazeFar: 66, ground: "#251b13",
-      dust: 0.82, grain: 0.21, exposure: 0.97
+      scrim: 0.76, dust: 0.82, grain: 0.21, exposure: 0.97
     }
   },
   {
@@ -191,7 +204,7 @@ export const KEYFRAMES = [
     world: {
       key: 0.85, env: 0.42, practical: 1.65, table: 0, ink: 1,
       hazeNear: 13, hazeFar: 72, ground: "#1e150f",
-      dust: 0.92, grain: 0.21, exposure: 0.96
+      scrim: 0.78, dust: 0.92, grain: 0.21, exposure: 0.96
     }
   },
   {
@@ -213,7 +226,7 @@ export const KEYFRAMES = [
     world: {
       key: 0.85, env: 0.42, practical: 1.65, table: 0, ink: 1,
       hazeNear: 13, hazeFar: 72, ground: "#1e150f",
-      dust: 0.92, grain: 0.21, exposure: 0.96
+      scrim: 0.78, dust: 0.92, grain: 0.21, exposure: 0.96
     }
   },
   {
@@ -229,7 +242,7 @@ export const KEYFRAMES = [
     world: {
       key: 0.72, env: 0.36, practical: 1.1, table: 2.2, ink: 1,
       hazeNear: 10, hazeFar: 54, ground: "#1c1510",
-      dust: 0.5, grain: 0.19, exposure: 0.95
+      scrim: 0.76, dust: 0.5, grain: 0.19, exposure: 0.95
     }
   },
   {
@@ -245,7 +258,7 @@ export const KEYFRAMES = [
     world: {
       key: 1.5, env: 0.6, practical: 0.8, table: 0.5, ink: 1,
       hazeNear: 9, hazeFar: 30, ground: "#1f1812",
-      dust: 0.38, grain: 0.17, exposure: 1.0
+      scrim: 0.78, dust: 0.38, grain: 0.17, exposure: 1.0
     }
   },
   {
@@ -259,12 +272,16 @@ export const KEYFRAMES = [
       mobile: { position: [-6.0, -0.3, 7.4], target: [-3.2, -1.7, -0.2], fov: 47 }
     },
     world: {
-      // The studio pages step back into daylight. The haze closes right in, so
-      // the case dissolves into a parchment field after its first metre and the
-      // editorial copy can sit in ink again without a scrim over the room.
-      key: 2.3, env: 1.15, practical: 0.35, table: 0.2, ink: 0.05,
-      hazeNear: 3.6, hazeFar: 8.4, ground: "#d3c7b2",
-      dust: 0.22, grain: 0.13, exposure: 1.04
+      // The studio steps back, but it does not step back into daylight. The
+      // haze still closes right in, so the case dissolves after its first
+      // metre and the editorial copy has a quiet field to sit on. That field
+      // is the most open the room gets after the frontispiece, which is what
+      // makes this chapter read as air; it does it on the light in the room
+      // rather than by turning the page over, because turning it here would
+      // put a white page under copy the reader is already halfway through.
+      key: 1.35, env: 0.52, practical: 0.6, table: 0.6, ink: 1,
+      hazeNear: 3.6, hazeFar: 9.4, ground: "#2a211a",
+      scrim: 0.76, dust: 0.3, grain: 0.15, exposure: 0.98
     }
   },
   {
@@ -283,7 +300,7 @@ export const KEYFRAMES = [
     world: {
       key: 0.5, env: 0.2, practical: 0.55, table: 2.1, ink: 1,
       hazeNear: 6, hazeFar: 28, ground: "#120c08",
-      dust: 0.7, grain: 0.23, exposure: 0.92
+      scrim: 0.8, dust: 0.7, grain: 0.23, exposure: 0.92
     }
   }
 ];

@@ -439,6 +439,7 @@ export class LibraryWorld {
     out.hazeNear = THREE.MathUtils.lerp(a.hazeNear, b.hazeNear, e) * haze;
     out.hazeFar = THREE.MathUtils.lerp(a.hazeFar, b.hazeFar, e) * haze;
     out.dust = THREE.MathUtils.lerp(a.dust, b.dust, e);
+    out.scrim = THREE.MathUtils.lerp(a.scrim ?? 0, b.scrim ?? 0, e);
     out.grain = THREE.MathUtils.lerp(a.grain, b.grain, e);
     out.exposure = THREE.MathUtils.lerp(a.exposure, b.exposure, e);
     _c1.set(a.ground);

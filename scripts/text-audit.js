@@ -70,6 +70,30 @@ function contrastRatio(a, b) {
  */
 const AXIS_ANGLES = { 0: "up", 90: "right", 180: "down", 270: "left" };
 
+/**
+ * Splits a computed `background-image` into its layers.
+ *
+ * The commas inside a gradient's own argument list look exactly like the ones
+ * separating layers, so this counts brackets rather than splitting on text.
+ */
+function splitLayers(image) {
+  if (!image || image === "none") return [];
+  const layers = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < image.length; i += 1) {
+    const c = image[i];
+    if (c === "(") depth += 1;
+    else if (c === ")") depth -= 1;
+    else if (c === "," && depth === 0) {
+      layers.push(image.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  layers.push(image.slice(start).trim());
+  return layers.filter(Boolean);
+}
+
 function parseStops(image) {
   return [...image.matchAll(/rgba?\(([^)]+)\)\s+(-?\d+(?:\.\d+)?)%/g)].map((match) => ({
     colour: parseColour(`rgba(${match[1]})`),
@@ -153,33 +177,46 @@ function buildBackground() {
   if (canvas && canvas.width) ctx.drawImage(canvas, 0, 0, width, height);
   const pixels = ctx.getImageData(0, 0, width, height).data;
 
-  // Every plate currently on screen, in paint order: the chapter's own, and
-  // the one the chapter ledger carries into the corner of the frame.
-  const PLATES = [[".chapter__stage", "::after"], [".ledger", "::before"]];
+  // Everything dimming the room right now, in paint order: the scrim over the
+  // whole viewport, and the plate the chapter ledger carries into the corner
+  // of the frame. Chapter stages no longer carry one of their own; a box
+  // inside a sticky stage drew its edge across the picture at every handover.
+  const PLATES = [[".scrim", null], [".ledger", "::before"]];
   const scrims = [];
   PLATES.forEach(([selector, pseudo]) => {
     document.querySelectorAll(selector).forEach((element) => {
       const style = getComputedStyle(element, pseudo);
       const opacity = Number.parseFloat(style.opacity) || 0;
       if (opacity <= 0.01) return;
-      const gradient = parseScrimGradient(style.backgroundImage);
-      if (!gradient) return;
-      if (gradient.unsupported) {
-        console.warn("[text-audit] unreadable plate, contrast under it is not measured:", gradient.unsupported);
+
+      // A background can be several layers, and the first one listed paints on
+      // top, so they are composited back to front.
+      const layers = splitLayers(style.backgroundImage)
+        .map(parseScrimGradient)
+        .filter(Boolean)
+        .reverse();
+      if (!layers.length) return;
+      const unsupported = layers.find((layer) => layer.unsupported);
+      if (unsupported) {
+        console.warn("[text-audit] unreadable plate, contrast under it is not measured:",
+          unsupported.unsupported);
         return;
       }
+
       // A pseudo-element can be inset past its host, so the plate is measured
       // from the host's box grown by the inset the stylesheet gives it.
       const host = element.getBoundingClientRect();
       const grow = (value) => -(Number.parseFloat(value) || 0);
-      const box = new DOMRect(
-        host.left - grow(style.left),
-        host.top - grow(style.top),
-        host.width + grow(style.left) + grow(style.right),
-        host.height + grow(style.top) + grow(style.bottom)
-      );
+      const box = pseudo
+        ? new DOMRect(
+            host.left - grow(style.left),
+            host.top - grow(style.top),
+            host.width + grow(style.left) + grow(style.right),
+            host.height + grow(style.top) + grow(style.bottom)
+          )
+        : host;
       if (box.bottom <= 0 || box.top >= window.innerHeight) return;
-      scrims.push({ box, gradient, opacity });
+      scrims.push({ box, layers, opacity });
     });
   });
 
@@ -188,15 +225,14 @@ function buildBackground() {
     const py = Math.min(height - 1, Math.max(0, Math.round(y * scale)));
     const index = (py * width + px) * 4;
     let colour = { r: pixels[index], g: pixels[index + 1], b: pixels[index + 2], a: 1 };
-    scrims.forEach(({ box, gradient, opacity }) => {
+    scrims.forEach(({ box, layers, opacity }) => {
       if (y < box.top || y > box.bottom || x < box.left || x > box.right) return;
-      if (gradient.unsupported) return;
-      const stop = sampleGradient(
-        gradient,
-        (x - box.left) / Math.max(1, box.width),
-        (y - box.top) / Math.max(1, box.height)
-      );
-      colour = over({ ...stop, a: stop.a * opacity }, colour);
+      const fx = (x - box.left) / Math.max(1, box.width);
+      const fy = (y - box.top) / Math.max(1, box.height);
+      layers.forEach((gradient) => {
+        const stop = sampleGradient(gradient, fx, fy);
+        colour = over({ ...stop, a: stop.a * opacity }, colour);
+      });
     });
     return colour;
   };

@@ -37,6 +37,7 @@ export function createInterface({ projects, reduceMotion }) {
     diagnosticsOut: document.querySelector("[data-diagnostics-output]"),
     commissionCta: document.querySelector("[data-commission-cta]"),
     grain: document.querySelector(".grain"),
+    scrim: document.querySelector(".scrim"),
     backdrop: document.querySelector("[data-backdrop]")
   };
 
@@ -51,6 +52,7 @@ export function createInterface({ projects, reduceMotion }) {
   let currentIndex = -1;
   let surface = "light";
   let grainValue = -1;
+  let scrimValue = -1;
 
   /* ---- index rail ------------------------------------------------------ */
 
@@ -152,6 +154,22 @@ export function createInterface({ projects, reduceMotion }) {
   /** Only ever called with a value the world says has actually changed. */
   function setBackdrop(colour) {
     if (colour) el.backdrop.style.backgroundColor = colour;
+  }
+
+  /**
+   * How far the room is dimmed under the copy.
+   *
+   * One layer over the whole viewport, carrying an authored channel that is
+   * interpolated every frame, so the room descends into shadow continuously
+   * rather than a chapter switching a plate on underneath itself. Rounded for
+   * the same reason the grain is: a hundred steps is past what an eye can
+   * separate, and it keeps this off the style recalculation on most frames.
+   */
+  function setScrim(value) {
+    const rounded = Math.round(value * 100) / 100;
+    if (rounded === scrimValue) return;
+    scrimValue = rounded;
+    el.scrim.style.setProperty("--scrim-strength", String(rounded));
   }
 
   function setGrain(value) {
@@ -278,6 +296,7 @@ export function createInterface({ projects, reduceMotion }) {
     setProgress,
     setSurface,
     setBackdrop,
+    setScrim,
     setGrain,
     fillPanel,
     announceClose,

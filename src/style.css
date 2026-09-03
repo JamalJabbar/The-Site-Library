@@ -52,31 +52,58 @@
   --grain: 0.15;
 
   /*
-    The tone a chapter's copy is read off.
+    The tone the room is dimmed in.
 
     Type sits on a live render whose luminance changes with every frame, so
-    legibility cannot be left to whatever the camera happens to be pointing at.
-    Each chapter lays a soft plate of the room's own light under the column its
-    copy occupies: the room's shadow on a dark page, the room's daylight on a
-    pale one. It reads as falloff rather than as a panel, it turns over with
-    the ink so the two are never mismatched, and it is what makes the contrast
-    of every line a property of the design instead of an accident of the shot.
+    legibility cannot be left to whatever the camera happens to be pointing
+    at. The room itself goes into shadow under the copy, in its own light:
+    the room's shadow on a dark page, the room's daylight on a pale one. It
+    turns over with the ink so the two are never mismatched.
+
+    Only the tone lives here. How far it goes is a channel in the scene
+    ledger, written onto the scrim layer per frame, because a step in it
+    anywhere is a step a reader sees.
   */
   --scrim: 244, 240, 231;
-  --scrim-strength: 0.9;
-  --scrim-angle: 270deg;
+
+  /*
+    The ground the render sits on.
+
+    Nothing should ever see this: the room covers the viewport edge to edge.
+    But the room is a WebGL surface, and a lost context, a slow first paint or
+    a machine that cannot give it a canvas all end the same way, with the page
+    underneath showing through. That page has to be the tone the copy is set
+    for. Left pale while the type had turned to cream it was a white screen
+    with nothing readable on it, which is the same failure as the plate, one
+    layer further down.
+  */
+  --page: var(--parchment);
+
+  /*
+    The page turns over as one move.
+
+    Turning it means changing the ink, the plate under the ink, the hairlines
+    and the chrome at the same instant, and a reader is looking at all of them
+    while it happens. When those pieces ran at different speeds the plate
+    reached the new tone before the type did, and for the length of the
+    difference the copy was the old colour on the new ground: dark ink on a
+    dark plate, which is the part of the change a reader actually noticed.
+    Every property that turns with the surface uses this, so they cannot drift
+    apart again.
+  */
+  --turn: 900ms cubic-bezier(0.22, 1, 0.36, 1);
 
   color-scheme: light;
 }
 
 [data-surface="dark"] {
+  --page: #12100d;
   --fg: var(--cream);
   --fg-soft: rgba(248, 244, 235, 0.84);
   --hairline: rgba(248, 244, 235, 0.2);
   --veil: rgba(21, 18, 15, 0.72);
   --accent: var(--brass-soft);
   --scrim: 9, 6, 4;
-  --scrim-strength: 0.93;
   color-scheme: dark;
 }
 
@@ -97,13 +124,13 @@ html {
 body {
   margin: 0;
   min-height: 100svh;
-  background: var(--parchment);
+  background: var(--page);
   color: var(--fg);
   font-family: var(--grotesk);
   font-size: 16px;
   line-height: 1.6;
   overflow-x: clip;
-  transition: color 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: color var(--turn), background-color var(--turn);
 }
 
 h1, h2, h3, p, figure, blockquote, dl, dd, ol, ul { margin: 0; }
@@ -176,7 +203,8 @@ button {
    -1  backdrop      the room's ground colour, tone mapped to match the render
     0  behind-type   the upper headline line
     1  stage         the renderer, transparent
-    2  grain
+    2  scrim         the room going into shadow under the copy
+    2  grain         over the scrim, so the dimming is grained like the room
     3  main          every chapter's copy
   The volume is drawn at layer 1, so it passes in front of "Websites" and
   behind "worth keeping." exactly as a photographed object would.
@@ -186,7 +214,7 @@ button {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: var(--parchment);
+  background: var(--page);
 }
 
 .behind-type {
@@ -208,6 +236,52 @@ button {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/*
+  The room going into shadow.
+
+  One layer, fixed to the viewport, sitting between the renderer and the copy.
+  It used to be a plate inside each chapter's stage, and that was wrong twice
+  over. A stage is a box: at a handover two of them share the frame, so where
+  one ended the dimming stopped dead and the seam read as a hard horizontal
+  line across the picture. And a plate sized to a copy column is a strip laid
+  over the room rather than the room itself getting darker.
+
+  So it is the whole viewport, and its geometry never changes: a soft fall
+  from the centre out, over an even floor, both in the tone the page is set
+  in. Only its strength moves, carried by an authored channel the world
+  interpolates every frame, which is what makes the descent into the archive
+  continuous. Nothing here switches, so there is no edge anywhere to see.
+
+  The stops are a smooth curve rather than a few far-apart handles, because a
+  linear ramp between distant stops kinks where they meet and the eye finds
+  the kink as a band.
+*/
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: var(--scrim-strength, 0);
+  background:
+    radial-gradient(128% 108% at 50% 44%,
+      rgba(var(--scrim), 0) 0%,
+      rgba(var(--scrim), 0.007) 16%,
+      rgba(var(--scrim), 0.027) 30%,
+      rgba(var(--scrim), 0.063) 43%,
+      rgba(var(--scrim), 0.11) 55%,
+      rgba(var(--scrim), 0.165) 66%,
+      rgba(var(--scrim), 0.225) 76%,
+      rgba(var(--scrim), 0.28) 85%,
+      rgba(var(--scrim), 0.32) 93%,
+      rgba(var(--scrim), 0.34) 100%),
+    linear-gradient(rgba(var(--scrim), 0.8) 0%, rgba(var(--scrim), 0.8) 100%);
+  /* The tone turns over with the page; the strength is written per frame and
+     must not be caught by a transition or it would lag the room it belongs
+     to by most of a second. */
+  transition: background var(--turn);
+  will-change: opacity;
 }
 
 .grain {
@@ -238,8 +312,8 @@ button {
   color: var(--fg);
   transition:
     height 620ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 620ms ease,
-    color 900ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color var(--turn),
+    color var(--turn),
     backdrop-filter 620ms ease;
 }
 
@@ -366,7 +440,7 @@ button {
   color: var(--fg);
   opacity: 0.88;
   pointer-events: none;
-  transition: color 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 500ms ease;
+  transition: color var(--turn), opacity 500ms ease;
 }
 
 /*
@@ -382,10 +456,13 @@ button {
   inset: -18px -46px -22px -32px;
   z-index: -1;
   background: radial-gradient(150% 190% at 38% 58%,
-    rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 0%,
-    rgba(var(--scrim), calc(var(--scrim-strength) * 0.66)) 44%,
+    rgba(var(--scrim), 0.62) 0%,
+    rgba(var(--scrim), 0.5) 26%,
+    rgba(var(--scrim), 0.34) 48%,
+    rgba(var(--scrim), 0.17) 70%,
+    rgba(var(--scrim), 0.05) 87%,
     rgba(var(--scrim), 0) 100%);
-  transition: background 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background var(--turn);
 }
 
 .ledger__rule { width: 14px; height: 1px; background: currentColor; opacity: 0.5; }
@@ -445,49 +522,6 @@ main { position: relative; z-index: 3; }
 }
 
 .chapter__stage > * { pointer-events: auto; }
-
-/*
-  Local contrast, not a blanket. The copy column gets a soft plate in the tone
-  the page is currently set in, angled so it falls away toward the side the
-  room is doing the work. It sits between the renderer and the type, reads as
-  falloff rather than as a panel, and never covers the whole frame.
-*/
-.chapter__stage::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(var(--scrim-angle),
-    rgba(var(--scrim), var(--scrim-strength)) 0%,
-    rgba(var(--scrim), calc(var(--scrim-strength) * 0.86)) 24%,
-    rgba(var(--scrim), calc(var(--scrim-strength) * 0.4)) 48%,
-    rgba(var(--scrim), 0) 74%);
-  transition: background 620ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* The copy column, chapter by chapter. */
-.works, .reading, .studio { --scrim-angle: 270deg; }
-.binding, .commission { --scrim-angle: 90deg; }
-
-/*
-  The frontispiece is the one page with no plate. Its room is a bleached field
-  the type is already set against, and the volume is meant to pass through the
-  headline rather than sit behind a screen.
-*/
-.frontispiece::after { background: none; }
-
-/*
-  Two captions on the centre line, so the plate is a band across the middle
-  rather than a wash from one side.
-*/
-.stacks::after {
-  background: linear-gradient(180deg,
-    rgba(var(--scrim), 0) 8%,
-    rgba(var(--scrim), calc(var(--scrim-strength) * 0.92)) 34%,
-    rgba(var(--scrim), calc(var(--scrim-strength) * 0.92)) 66%,
-    rgba(var(--scrim), 0) 92%);
-}
 
 /* ---- 01 Frontispiece ---------------------------------------------------- */
 
@@ -1480,29 +1514,11 @@ main { position: relative; z-index: 3; }
 
 @media (max-width: 1024px) {
   /*
-    The copy stops being a column and starts being the page, so the plate has
-    to stop being a wash from one side. Below this width it lies across the
-    whole frame, opening at the top where the room is doing the work and
-    closing toward the copy underneath.
+    The copy stops being a column and starts being the page. The scrim needs
+    no answer to that: it covers the viewport at every width, and its fall is
+    from the centre out rather than from one side, so it is already the same
+    shape for a page of copy as for a column of it.
   */
-  .chapter__stage::after {
-    background: linear-gradient(180deg,
-      rgba(var(--scrim), 0) 0%,
-      rgba(var(--scrim), calc(var(--scrim-strength) * 0.84)) 24%,
-      rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 62%,
-      rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 100%);
-  }
-
-  .frontispiece::after { background: none; }
-
-  .stacks::after {
-    background: linear-gradient(180deg,
-      rgba(var(--scrim), 0) 6%,
-      rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 30%,
-      rgba(var(--scrim), calc(var(--scrim-strength) * 0.94)) 70%,
-      rgba(var(--scrim), 0) 94%);
-  }
-
   .reading { grid-template-columns: 1fr min(52ch, 56vw); }
   .binding { grid-template-columns: min(52ch, 56vw) 1fr; }
   .studio { grid-template-columns: 1fr; gap: 22px; align-content: center; }
