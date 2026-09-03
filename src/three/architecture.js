@@ -30,6 +30,16 @@ export const SITE = {
   table: { x: 4.4, y: -6.4, z: 2.9, width: 9.2, depth: 4.4 }
 };
 
+// The final volume sits alongside this dressing in the commission chapter.
+// Keep the nearby loose book far enough right that the two closed solids never
+// intersect, even though the camera compresses their gap into a close pairing.
+export const TABLE_VOLUMES = [
+  { x: -2.5, z: -0.5, w: 1.4, h: 0.34, d: 2.2, r: 0.06 },
+  { x: -2.42, z: -0.44, w: 1.32, h: 0.3, d: 2.1, r: -0.03 },
+  { x: -2.55, z: -0.38, w: 1.26, h: 0.26, d: 2.0, r: 0.09 },
+  { x: 2.15, z: 0.6, w: 1.5, h: 0.32, d: 2.3, r: -0.22 }
+];
+
 function seeded(seed = 1) {
   let value = (seed >>> 0) || 1;
   return () => {
@@ -280,14 +290,8 @@ export function buildArchitecture({ surfaces, quality }) {
     metalness: 0,
     envMapIntensity: 0.5
   }));
-  const laid = [
-    { x: -2.5, z: -0.5, w: 1.4, h: 0.34, d: 2.2, r: 0.06 },
-    { x: -2.42, z: -0.44, w: 1.32, h: 0.3, d: 2.1, r: -0.03 },
-    { x: -2.55, z: -0.38, w: 1.26, h: 0.26, d: 2.0, r: 0.09 },
-    { x: 1.4, z: 0.6, w: 1.5, h: 0.32, d: 2.3, r: -0.22 }
-  ];
   let stackY = SITE.table.y;
-  laid.forEach((item, index) => {
+  TABLE_VOLUMES.forEach((item, index) => {
     const geometry = new THREE.BoxGeometry(item.w, item.h, item.d);
     scaleFaceUVs(geometry, item.w, item.h, item.d, 0.7);
     geometry.rotateY(item.r);

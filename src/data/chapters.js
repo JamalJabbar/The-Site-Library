@@ -31,8 +31,9 @@ export const CHAPTERS = [
 /** Where the hero volume floats before it is returned to the collection. */
 export const HERO_REST = { x: 0.35, y: 1.0, z: 4.6 };
 
-/** Where the hero volume lies for the closing chapter. */
-export const TABLE_REST = { x: 4.4, y: -6.14, z: 2.9 };
+/** Where the hero volume lies for the closing chapter. The roll is shared with
+ * the table dressing so its final footprint can keep real object clearance. */
+export const TABLE_REST = { x: 4.4, y: -6.14, z: 2.9, roll: -0.14 };
 
 /** Where the binding sequence takes the volume apart. Right of frame, because
  *  the process copy occupies the left column. */

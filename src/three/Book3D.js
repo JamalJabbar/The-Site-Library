@@ -40,6 +40,128 @@ const smoothstep = (value) => value * value * (3 - 2 * value);
 
 let sharedRibbonGeometry = null;
 
+/**
+ * Builds the spine as a closed D-shaped solid rather than a one-sided cylinder
+ * skin. The curved face keeps the artwork UVs of CylinderGeometry, while the
+ * chord hidden inside the binding and the head/tail caps make the volume
+ * watertight from every viewing angle.
+ */
+export function createClosedSpineGeometry({ radius, height, sweep, segments = 26 }) {
+  const positions = [];
+  const normals = [];
+  const uvs = [];
+  const halfHeight = height * 0.5;
+  const halfDepth = radius * Math.sin(sweep);
+  const seamX = -radius * Math.cos(sweep);
+  const thetaStart = -Math.PI * 0.5 - sweep;
+  const thetaLength = sweep * 2;
+
+  const point = (index, y) => {
+    const theta = thetaStart + thetaLength * (index / segments);
+    return {
+      x: radius * Math.sin(theta),
+      y,
+      z: radius * Math.cos(theta),
+      nx: Math.sin(theta),
+      nz: Math.cos(theta),
+      u: index / segments
+    };
+  };
+  const vertex = (position, normal, uv) => {
+    positions.push(position.x, position.y, position.z);
+    normals.push(normal.x, normal.y, normal.z);
+    uvs.push(uv.x, uv.y);
+  };
+  const triangle = (a, b, c, normalA, normalB, normalC, uvA, uvB, uvC) => {
+    vertex(a, normalA, uvA);
+    vertex(b, normalB, uvB);
+    vertex(c, normalC, uvC);
+  };
+
+  // Curved, artwork-bearing face.
+  for (let index = 0; index < segments; index += 1) {
+    const lowerA = point(index, -halfHeight);
+    const lowerB = point(index + 1, -halfHeight);
+    const upperA = point(index, halfHeight);
+    const upperB = point(index + 1, halfHeight);
+    const normalA = { x: lowerA.nx, y: 0, z: lowerA.nz };
+    const normalB = { x: lowerB.nx, y: 0, z: lowerB.nz };
+
+    triangle(
+      lowerA, lowerB, upperA,
+      normalA, normalB, normalA,
+      { x: lowerA.u, y: 0 }, { x: lowerB.u, y: 0 }, { x: upperA.u, y: 1 }
+    );
+    triangle(
+      lowerB, upperB, upperA,
+      normalB, normalB, normalA,
+      { x: lowerB.u, y: 0 }, { x: upperB.u, y: 1 }, { x: upperA.u, y: 1 }
+    );
+  }
+  const curvedVertexCount = positions.length / 3;
+
+  // The flat chord lives behind the boards. Splitting it at z=0 gives its top
+  // and bottom edges the same topology as the cap fans, leaving no T-junction.
+  const chordNormal = { x: 1, y: 0, z: 0 };
+  for (const [zA, zB] of [[-halfDepth, 0], [0, halfDepth]]) {
+    const lowerA = { x: seamX, y: -halfHeight, z: zA };
+    const upperA = { x: seamX, y: halfHeight, z: zA };
+    const lowerB = { x: seamX, y: -halfHeight, z: zB };
+    const upperB = { x: seamX, y: halfHeight, z: zB };
+    const uA = (zA + halfDepth) / (halfDepth * 2);
+    const uB = (zB + halfDepth) / (halfDepth * 2);
+    triangle(
+      lowerA, upperA, lowerB,
+      chordNormal, chordNormal, chordNormal,
+      { x: uA, y: 0 }, { x: uA, y: 1 }, { x: uB, y: 0 }
+    );
+    triangle(
+      upperA, upperB, lowerB,
+      chordNormal, chordNormal, chordNormal,
+      { x: uA, y: 1 }, { x: uB, y: 1 }, { x: uB, y: 0 }
+    );
+  }
+
+  // Solid head and tail. A fan from the chord midpoint fills the complete
+  // D-shaped cross-section and meets both the curved face and hidden chord.
+  const capRange = Math.max(1e-6, seamX + radius);
+  const capUV = (p) => ({
+    x: (p.z + halfDepth) / (halfDepth * 2),
+    y: (p.x + radius) / capRange
+  });
+  for (let index = 0; index < segments; index += 1) {
+    const topCentre = { x: seamX, y: halfHeight, z: 0 };
+    const topA = point(index, halfHeight);
+    const topB = point(index + 1, halfHeight);
+    const bottomCentre = { x: seamX, y: -halfHeight, z: 0 };
+    const bottomA = point(index, -halfHeight);
+    const bottomB = point(index + 1, -halfHeight);
+    const topNormal = { x: 0, y: 1, z: 0 };
+    const bottomNormal = { x: 0, y: -1, z: 0 };
+
+    triangle(
+      topCentre, topA, topB,
+      topNormal, topNormal, topNormal,
+      capUV(topCentre), capUV(topA), capUV(topB)
+    );
+    triangle(
+      bottomCentre, bottomB, bottomA,
+      bottomNormal, bottomNormal, bottomNormal,
+      capUV(bottomCentre), capUV(bottomB), capUV(bottomA)
+    );
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.addGroup(0, curvedVertexCount, 0);
+  geometry.addGroup(curvedVertexCount, positions.length / 3 - curvedVertexCount, 1);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
 export class Book3D extends THREE.Group {
   constructor({ project, artwork, surfaces, hero = false, ribbon = false }) {
     super();
@@ -221,13 +343,12 @@ export class Book3D extends THREE.Group {
     const radius = (halfDepth * halfDepth + bulge * bulge) / (2 * bulge);
     const sweep = Math.asin(Math.min(1, halfDepth / radius));
     const apexX = -width * 0.5 - crown;
-    // Open-ended: the head and tail of the spine are covered by the headbands
-    // and the boards, so the caps would be two draw calls of nothing.
-    const spineGeometry = this.#geometry(new THREE.CylinderGeometry(
-      radius, radius, height, 26, 1, true,
-      -Math.PI * 0.5 - sweep, sweep * 2
-    ));
-    const spine = new THREE.Mesh(spineGeometry, spineMat);
+    // This used to be an open, zero-thickness cylinder segment. The closing
+    // table angle can see the tail directly, which exposed that empty shell.
+    // A closed solid keeps the binding opaque when it is laid down, exploded,
+    // inspected, or viewed from an unusual aspect ratio.
+    const spineGeometry = this.#geometry(createClosedSpineGeometry({ radius, height, sweep }));
+    const spine = new THREE.Mesh(spineGeometry, [spineMat, edge]);
     spine.name = `${this.name}:spine`;
     spine.position.set(apexX + radius, 0, 0);
     spine.castShadow = false;

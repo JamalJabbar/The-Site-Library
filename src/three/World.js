@@ -301,7 +301,7 @@ export class LibraryWorld {
     ], false, "centripetal", 0.5);
 
     this.tableQuaternion = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(-Math.PI * 0.5, 0, -0.14)
+      new THREE.Euler(-Math.PI * 0.5, 0, TABLE_REST.roll)
     );
     this.bindingQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.05, 0.62, 0));
   }

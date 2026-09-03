@@ -10,8 +10,11 @@ import {
   CHAPTERS,
   KEYFRAMES,
   PRESENTATION,
+  TABLE_REST,
   SELECTED_WORKS_EXIT
 } from "../src/data/chapters.js";
+import { createClosedSpineGeometry } from "../src/three/Book3D.js";
+import { SITE, TABLE_VOLUMES } from "../src/three/architecture.js";
 import { auditSurface, auditDimming } from "./surface-audit.mjs";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
@@ -134,6 +137,28 @@ check(/PMREMGenerator/.test(environment),
   "The environment probe must be generated, not assumed");
 check(!/\.material\.opacity/.test(book),
   "Volumes must recede through light, not through opacity");
+// The spine used to be a zero-thickness, open-ended cylinder segment. It looked
+// correct upright but exposed an empty shell when the footer laid it tail-first
+// toward the camera. Count geometric edges rather than buffer indices because
+// the flat caps deliberately split normals at the curved face.
+const testSpine = createClosedSpineGeometry({ radius: 0.21, height: 2.5, sweep: 1.3, segments: 12 });
+const spinePositions = testSpine.getAttribute("position");
+const spineEdges = new Map();
+const pointKey = (index) => [0, 1, 2]
+  .map((axis) => spinePositions.getComponent(index, axis).toFixed(5))
+  .join(",");
+for (let index = 0; index < spinePositions.count; index += 3) {
+  const triangle = [pointKey(index), pointKey(index + 1), pointKey(index + 2)];
+  [[0, 1], [1, 2], [2, 0]].forEach(([a, b]) => {
+    const edge = [triangle[a], triangle[b]].sort().join("|");
+    spineEdges.set(edge, (spineEdges.get(edge) ?? 0) + 1);
+  });
+}
+check([...spineEdges.values()].every((count) => count === 2),
+  "The curved spine must be a closed solid with no boundary edges");
+check(testSpine.groups.length === 2,
+  "The spine caps must use cloth edge material instead of stretching the spine artwork");
+testSpine.dispose();
 check(/setHSL\([^)]*SRGBColorSpace/.test(architecture),
   "setHSL defaults to the linear working space; shelved stock must declare sRGB");
 check(/caseBackZ:\s*SHELF\.faceZ - SHELF\.deepest/.test(architecture),
@@ -142,6 +167,19 @@ check(/SPINE_OUT/.test(world) && /function shelfPose/.test(world),
   "The collection is shelved spine out, and that turn must be composed rather than authored");
 check(/setPresentedPose/.test(world) && /composeTarget/.test(book),
   "A volume must travel between a shelf pose and a presented pose, with exact endpoints");
+
+// The last piece of table dressing previously occupied the hero volume's final
+// pose. Their boxes overlapped by almost five centimetres, so the depth buffer
+// visibly cut one binding through the other in the footer.
+const adjacentTableVolume = TABLE_VOLUMES.at(-1);
+const heroHalfX = HERO_VOLUME.book.width * Math.abs(Math.cos(TABLE_REST.roll)) * 0.5 +
+  HERO_VOLUME.book.height * Math.abs(Math.sin(TABLE_REST.roll)) * 0.5;
+const adjacentHalfX = adjacentTableVolume.w * Math.abs(Math.cos(adjacentTableVolume.r)) * 0.5 +
+  adjacentTableVolume.d * Math.abs(Math.sin(adjacentTableVolume.r)) * 0.5;
+const tableBookClearance = SITE.table.x + adjacentTableVolume.x - adjacentHalfX -
+  (TABLE_REST.x + heroHalfX);
+check(tableBookClearance >= 0.2,
+  "The footer hero volume must not intersect the loose book beside it");
 // The volume drawn out of the collection is lit as well as moved.
 //
 // It used to stand out of the row into the same shadow the row was in, and at
