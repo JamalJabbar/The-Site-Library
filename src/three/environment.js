@@ -36,8 +36,8 @@ export function buildEnvironmentMap(renderer) {
   const shellTexture = gradientTexture([
     [0, "#fff4e2"],
     [0.34, "#e8dcc6"],
-    [0.62, "#7d6a55"],
-    [1, "#241a12"]
+    [0.62, "#9a8770"],
+    [1, "#3d2e20"]
   ]);
   disposables.push(shellTexture);
   const shellGeometry = new THREE.BoxGeometry(30, 22, 30);
@@ -59,11 +59,13 @@ export function buildEnvironmentMap(renderer) {
   // Broad softbox overhead, the photographic key source.
   panel("#fff6e8", 5.4, 16, 10, [0, 10.6, 1], [Math.PI / 2, 0, 0]);
   // Warm side bounce, roughly where the picture lights sit.
-  panel("#ffd7a0", 2.6, 12, 5, [-9, 1.5, 4], [0, Math.PI / 2, 0]);
+  panel("#ffd7a0", 3.2, 12, 5, [-9, 1.5, 4], [0, Math.PI / 2, 0]);
   // Cool counter-bounce so metals get a second, cooler highlight.
   panel("#cfd9e0", 1.35, 12, 5, [9, 2.5, 2], [0, -Math.PI / 2, 0]);
-  // Low warm floor bounce.
-  panel("#c39a6a", 0.9, 16, 8, [0, -7.5, 2], [-Math.PI / 2, 0, 0]);
+  // Low warm floor bounce. It is the only source reaching the undersides of
+  // the shelves and the back of the case, so it decides whether the joinery
+  // behind the collection reads as timber or as a hole.
+  panel("#c39a6a", 1.7, 16, 8, [0, -7.5, 2], [-Math.PI / 2, 0, 0]);
 
   const target = pmrem.fromScene(scene, 0.04);
   disposables.forEach((item) => item.dispose());
@@ -103,7 +105,10 @@ export function buildLighting({ scene, quality }) {
 
   // Practicals under the brass picture lights. Warm, tight, shelf-height.
   const practicals = [-5.4, 0, 5.4].map((x, index) => {
-    const spot = new THREE.SpotLight(0xffc98a, 0, 9.5, Math.PI * 0.34, 0.85, 1.4);
+    // The throw clears the full height of the case and the falloff is gentle,
+    // so the three fixtures overlap into one continuous wash instead of three
+    // bright patches with shadow standing between them.
+    const spot = new THREE.SpotLight(0xffc98a, 0, 13, Math.PI * 0.36, 0.9, 1.15);
     spot.name = `practical-${index}`;
     spot.position.set(x, SITE.shelfY + SITE.shelfPitch - 0.55, SITE.caseFrontZ + 0.05);
     spot.target.position.set(x, SITE.shelfY + 0.6, SITE.caseBackZ + 0.4);
@@ -119,8 +124,15 @@ export function buildLighting({ scene, quality }) {
     return spot;
   });
 
-  // A single low ambient so deep shadow never crushes to pure black.
-  const ambient = new THREE.HemisphereLight(0xf5e6cd, 0x1a120c, 0.24);
+  // The floor the whole room stands on.
+  //
+  // Every surface in this building is a pale one — oak, plaster, buckram, a
+  // light warm grey on the joinery — so a room lit only by its key and its
+  // practicals renders those materials at a fraction of the colour they were
+  // authored in and reads as a dark room rather than a warm one. This is the
+  // bounce that never comes from anywhere in particular: sky above, oak below,
+  // enough of it that shadow is a place you can still see into.
+  const ambient = new THREE.HemisphereLight(0xf5e6cd, 0x33251a, 0.62);
   group.add(ambient);
 
   // Table lamp for the reading room and the commission close-up.
@@ -148,6 +160,19 @@ export function buildLighting({ scene, quality }) {
   heroKey.castShadow = false;
   group.add(heroKey, heroKey.target);
 
+  // A reading light for the volume standing out of the collection.
+  //
+  // Wide, heavily feathered and warm: this is meant to read as somebody having
+  // leaned in with a lamp, not as a second spotlight. Because the cone is broad
+  // it lifts the shelf immediately around the volume as well as the volume
+  // itself, which is the point — a book picked out of a black row looks cut
+  // out of it, and a book picked out of a lit one looks like it belongs there.
+  const focusKey = new THREE.SpotLight(0xffe0b4, 0, 14, Math.PI * 0.26, 0.95, 1.2);
+  focusKey.name = "focus-key";
+  focusKey.visible = false;
+  focusKey.castShadow = false;
+  group.add(focusKey, focusKey.target);
+
   // Controlled studio light for a volume taken off the shelf. Off until needed.
   //
   // The cone is narrow and the throw is short, and that is what makes the
@@ -169,6 +194,7 @@ export function buildLighting({ scene, quality }) {
     ambient,
     tableLight,
     heroKey,
+    focusKey,
     inspect,
     dispose() {
       practicals.forEach((spot) => spot.shadow?.map?.dispose());

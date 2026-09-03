@@ -137,6 +137,19 @@ check(/SPINE_OUT/.test(world) && /function shelfPose/.test(world),
   "The collection is shelved spine out, and that turn must be composed rather than authored");
 check(/setPresentedPose/.test(world) && /composeTarget/.test(book),
   "A volume must travel between a shelf pose and a presented pose, with exact endpoints");
+// The volume drawn out of the collection is lit as well as moved.
+//
+// It used to stand out of the row into the same shadow the row was in, and at
+// the head of the traverse it measured darker than the shelf behind it. The
+// light rides the same continuous value that draws the book out, so it can
+// never switch on, and it has to be put out again or it is left burning over a
+// shelf nobody is looking at once the reader leaves the collection.
+check(/focusKey/.test(environment) && /focus-key/.test(environment),
+  "The collection needs a reading light for the volume standing out of it");
+check(/lighting\.focusKey\.intensity = drawn/.test(world),
+  "The reading light must ride the value that draws the volume out, not a threshold");
+check(/lighting\.focusKey\.visible = false/.test(world),
+  "The reading light must be put out when no volume is standing out of the row");
 
 // The lens aims past the slot it is reading so the volume it draws out of the
 // row has somewhere to stand. If the keyframes and the focus test disagree
@@ -204,6 +217,40 @@ const dimming = auditDimming();
 check(dimming.steepest <= 0.34,
   `The room dims by ${(dimming.steepest * 100).toFixed(0)}% of the scrim in one screen at ` +
   `${dimming.chapter} ${dimming.local.toFixed(2)}, which reads as a step rather than a descent`);
+
+// The dimming is a vignette and not a veil.
+//
+// It used to be a flat four-fifths under a radial that added six hundredths at
+// the corner, which is not a room going into shadow: it is a grey card held
+// over the whole picture, and the collection at the centre of the frame
+// arrived as dark as the corners. Most of the shape has to stay in the radial,
+// or the room is lit and then thrown away again everywhere equally.
+const scrimFloor = Number.parseFloat(
+  (ruleFor(".scrim")?.text.match(/--scrim-floor:\s*([\d.]+)/) || [])[1]);
+const scrimEdge = Number.parseFloat(
+  (ruleFor(".scrim")?.text.match(/rgba\(var\(--scrim\),\s*([\d.]+)\)\s*100%/) || [])[1]);
+check(Number.isFinite(scrimFloor) && Number.isFinite(scrimEdge),
+  "The dimming must declare both an even floor and an outer edge to be measurable");
+check(scrimFloor < scrimEdge * 0.6,
+  `The dimming's even floor is ${scrimFloor} against an edge of ${scrimEdge}: it has gone back ` +
+  "to being a flat card over the picture rather than the room falling away at its edges");
+
+// Cream type crossing a lit object carries its own ground.
+//
+// A third of the bindings are pale and every board is stamped in gold, so the
+// copy meets cream on cream in nearly every chapter. A plate behind the column
+// would answer it and would bring back the edges the chapter plates were taken
+// out for, so the ground travels with the glyphs instead.
+// Matched as a whole selector rather than a substring: the button rule below
+// starts with these same characters, so a looser test passes on the buttons
+// alone and would let the halo come off every other line of copy in silence.
+const stageHalo = css.match(
+  /\[data-surface="dark"\]\s*\.chapter__stage\s*(?:,[^{]*)?\{([^}]*)\}/);
+check(Boolean(stageHalo) && stageHalo[1].includes("text-shadow"),
+  "Copy set over a lit room needs a ground carried by the type, not a box behind it");
+check(/\[data-surface="dark"\]\s*\.chapter__stage\s+button/.test(css),
+  "Buttons must be named: a form control does not inherit text-shadow, so the rail and the " +
+  "chapter actions would be the only copy on the page with no ground under it");
 
 // Every list that pairs an index with a description places both of its
 // columns. Left to auto-flow the description drops into the index column, sets

@@ -705,6 +705,11 @@ export class LibraryWorld {
     }
 
     /* -- volumes --------------------------------------------------------- */
+    // How far the collection has a volume standing out of it, which is what the
+    // reading light rides on. Carried out of the branch below so the light can
+    // be placed once, and so that leaving scroll mode puts it out rather than
+    // stranding it lit over a shelf nobody is looking at.
+    let drawn = 0;
     if (this.mode === "scroll") {
       this.#placeHeroVolume(t);
 
@@ -719,9 +724,11 @@ export class LibraryWorld {
         // Focus is what draws a volume out of the row, so it has to be a
         // continuous value: the shelf fades it in, the reading room takes it
         // back, and the volume travels between its two poses on it.
-        book.setFocus(focused * shelfIn * (1 - shelfOut));
+        const lift = focused * shelfIn * (1 - shelfOut);
+        if (focused) drawn = lift;
+        book.setFocus(lift);
         const recede = Math.max(1 - shelfIn, shelfOut * 0.8);
-        book.setDim(Math.min(0.88, recede + (attention >= 0 && !focused ? 0.28 : 0)));
+        book.setDim(Math.min(0.88, recede + (attention >= 0 && !focused ? 0.32 : 0)));
         book.present({ dt });
       }
       this.heroBook.setDim(t > a[4] && t < a[6] ? 0.5 : 0);
@@ -746,6 +753,21 @@ export class LibraryWorld {
       if (this.mode === "inspection") {
         this.inspected.setCoverOpen(0.32 + this.pointerSmooth.x * 0.16);
       }
+    }
+
+    // The reading light follows the volume out of the row and back into it on
+    // the same continuous value that moves the book, so it never switches on: it
+    // arrives with the volume and leaves with it. It goes out under the veil,
+    // where the inspection key is the only light on the object.
+    if (drawn > 0.004 && this.focusIndex >= 0) {
+      this.projectBooks[this.focusIndex].getWorldPosition(_v1);
+      this.lighting.focusKey.target.position.copy(_v1);
+      this.lighting.focusKey.position.set(_v1.x - 1.5, _v1.y + 2.2, _v1.z + 2.9);
+      this.lighting.focusKey.intensity = drawn * 30 * (1 - veil);
+      this.lighting.focusKey.visible = true;
+    } else if (this.lighting.focusKey.visible) {
+      this.lighting.focusKey.intensity = 0;
+      this.lighting.focusKey.visible = false;
     }
 
     this.#updateShadow(this.heroShadow, this.heroBook, 1);

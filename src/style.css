@@ -257,6 +257,16 @@ button {
   The stops are a smooth curve rather than a few far-apart handles, because a
   linear ramp between distant stops kinks where they meet and the eye finds
   the kink as a band.
+
+  Most of the shape is in the radial and only a little of it in the even floor.
+  It used to be the other way round — a flat four-fifths under a radial that
+  added six hundredths at the corner — which is not a room going into shadow at
+  all, it is a grey card held over the whole picture. The room was being lit and
+  then two thirds of it thrown away everywhere equally, so the collection at the
+  centre of the frame arrived as dark as the corners. Now the light in the
+  middle of the frame is mostly kept and the fall is at the edges, where the
+  copy sits: the shape a room actually has when it is lit from within, and the
+  reason the archive can be warm without the type losing its ground.
 */
 .scrim {
   position: fixed;
@@ -264,19 +274,24 @@ button {
   z-index: 2;
   pointer-events: none;
   opacity: var(--scrim-strength, 0);
+  /* The even floor under the vignette, named so the narrow layouts can lay it
+     on heavier without restating the whole gradient. */
+  --scrim-floor: 0.32;
   background:
     radial-gradient(128% 108% at 50% 44%,
       rgba(var(--scrim), 0) 0%,
-      rgba(var(--scrim), 0.007) 16%,
-      rgba(var(--scrim), 0.027) 30%,
-      rgba(var(--scrim), 0.063) 43%,
-      rgba(var(--scrim), 0.11) 55%,
-      rgba(var(--scrim), 0.165) 66%,
-      rgba(var(--scrim), 0.225) 76%,
-      rgba(var(--scrim), 0.28) 85%,
-      rgba(var(--scrim), 0.32) 93%,
-      rgba(var(--scrim), 0.34) 100%),
-    linear-gradient(rgba(var(--scrim), 0.8) 0%, rgba(var(--scrim), 0.8) 100%);
+      rgba(var(--scrim), 0.014) 16%,
+      rgba(var(--scrim), 0.054) 30%,
+      rgba(var(--scrim), 0.127) 43%,
+      rgba(var(--scrim), 0.222) 55%,
+      rgba(var(--scrim), 0.333) 66%,
+      rgba(var(--scrim), 0.454) 76%,
+      rgba(var(--scrim), 0.565) 85%,
+      rgba(var(--scrim), 0.646) 93%,
+      rgba(var(--scrim), 0.686) 100%),
+    linear-gradient(
+      rgba(var(--scrim), var(--scrim-floor)) 0%,
+      rgba(var(--scrim), var(--scrim-floor)) 100%);
   /* The tone turns over with the page; the strength is written per frame and
      must not be caught by a transition or it would lag the room it belongs
      to by most of a second. */
@@ -522,6 +537,37 @@ main { position: relative; z-index: 3; }
 }
 
 .chapter__stage > * { pointer-events: auto; }
+
+/*
+  Cream type carrying its own ground.
+
+  The archive is not a dark room with dark things in it. A third of the
+  bindings are pale, every board is stamped in gold, and the copy columns cross
+  all of it — the caption runs over the volume's own title panel, the process
+  list sits on the cream text block of the volume being taken apart, the studio
+  headline lands on a white spine. While the room was veiled that never showed;
+  lit, it is cream type on cream in nearly every chapter.
+
+  A plate behind the column would answer it and would be the wrong instrument
+  for the same reason the chapter plates were taken out: a box has edges, and
+  two sticky stages sharing the frame at a handover draw those edges across the
+  picture. So the ground travels with the glyphs instead. It is the frontispiece
+  device run the other way — there, dark type crossing a dark binding carries
+  the room's light with it; here, pale type crossing a lit one carries its
+  shadow. Two radii, because they do different work: the tight one is dense
+  right behind the strokes, which is the only place contrast is actually
+  measured, and the wide one settles the field around the line so the tight one
+  never reads as an outline. Both are in the scrim's own tone, so the type is
+  bedded on the same shadow the rest of the room is going into.
+*/
+[data-surface="dark"] .chapter__stage,
+/* A form control does not inherit text-shadow — the UA sheet clears it — and
+   the buttons in these stages are copy like any other, so they are named. */
+[data-surface="dark"] .chapter__stage button {
+  text-shadow:
+    0 0 8px rgba(var(--scrim), 0.38),
+    0 0 26px rgba(var(--scrim), 0.34);
+}
 
 /* ---- 01 Frontispiece ---------------------------------------------------- */
 
@@ -802,6 +848,14 @@ main { position: relative; z-index: 3; }
      unselected ones are held back rather than hidden. */
   opacity: 0.72;
   transition: opacity 320ms ease;
+  /* The rail runs along the foot of the frame, which is where the collection
+     is closest to the lens and its pale boards are brightest, and it is held
+     back to less than full strength by design. The browser fades a shadow with
+     the element it belongs to, so its ground has to be laid on denser than the
+     copy's to arrive at the same place. */
+  text-shadow:
+    0 0 6px rgba(var(--scrim), 0.62),
+    0 0 20px rgba(var(--scrim), 0.5);
 }
 
 .rail__item::after {
@@ -1536,11 +1590,17 @@ main { position: relative; z-index: 3; }
 
 @media (max-width: 1024px) {
   /*
-    The copy stops being a column and starts being the page. The scrim needs
-    no answer to that: it covers the viewport at every width, and its fall is
-    from the centre out rather than from one side, so it is already the same
-    shape for a page of copy as for a column of it.
+    The copy stops being a column and starts being the page, and the scrim does
+    have to answer that now. Most of its shape is in the radial, which falls
+    from the centre out — the right shape for copy set beside the subject and
+    the wrong one for copy set over it. At these widths there is nowhere beside
+    the subject for the copy to be, so the even floor under the radial is laid
+    on heavier and the whole room steps back rather than only its edges. It is
+    still well short of the flat veil this used to be at every width, which is
+    why the collection is legible here too.
   */
+  .scrim { --scrim-floor: 0.52; }
+
   .reading { grid-template-columns: 1fr min(52ch, 56vw); }
   .binding { grid-template-columns: min(52ch, 56vw) 1fr; }
   .studio { grid-template-columns: 1fr; gap: 22px; align-content: center; }

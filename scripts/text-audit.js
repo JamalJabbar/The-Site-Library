@@ -455,7 +455,14 @@ export function findContrastFailures(runs, { minOpacity = 0.6, sample = null } =
         if (x < 0 || x > window.innerWidth) continue;
         let behind = sample(x, y);
         run.plates.forEach((plate) => { behind = over(plate, behind); });
-        run.halo.forEach((layer) => { behind = over(layer, behind); });
+        // Folded through the run's own opacity, because the browser fades a
+        // faded element and its shadow together: type held at two thirds is
+        // carrying two thirds of a halo, not a whole one. Read at face value
+        // this let held-back copy — the unlit process steps, the index rail
+        // behind the volume it indexes — claim a ground it does not have.
+        run.halo.forEach((layer) => {
+          behind = over({ ...layer, a: layer.a * run.opacity }, behind);
+        });
         const ink = over({ ...run.colour, a: run.colour.a * run.opacity }, behind);
         const ratio = contrastRatio(ink, behind);
         if (ratio < worst) {

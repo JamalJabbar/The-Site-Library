@@ -133,7 +133,7 @@ export const KEYFRAMES = [
       mobile: { position: [0.05, 1.25, 11.5], target: [0.15, 0.72, 2.6], fov: 42 }
     },
     world: {
-      key: 1.7, env: 0.6, practical: 0.75, table: 0, heroLight: 0.38,
+      key: 1.75, env: 0.86, practical: 1.0, table: 0, heroLight: 0.38,
       // The page turns here, and this is the only place in the document it
       // turns. It happens while the frontispiece is still sliding out of the
       // frame: the room drops into shadow, the copy goes to cream, and there
@@ -141,8 +141,8 @@ export const KEYFRAMES = [
       // after this one is set in pale type on a dark ground and stays there,
       // so a reader meets one handover and then never sees the page move
       // under them again.
-      hazeNear: 7.8, hazeFar: 22, ground: "#54432f", ink: 1,
-      scrim: 0.55, dust: 0.26, grain: 0.17, exposure: 1.02
+      hazeNear: 7.8, hazeFar: 22, ground: "#5d4b35", ink: 1,
+      scrim: 0.55, dust: 0.26, grain: 0.17, exposure: 1.06
     }
   },
   {
@@ -156,9 +156,9 @@ export const KEYFRAMES = [
       mobile: { position: [-1.0, 1.15, 10.7], target: [-1.4, 0.5, 0.8], fov: 44 }
     },
     world: {
-      key: 1.6, env: 0.66, practical: 1.1, table: 0, heroLight: 0.18,
-      hazeNear: 10, hazeFar: 48, ground: "#4c3b2c", ink: 1,
-      scrim: 0.72, dust: 0.5, grain: 0.19, exposure: 0.99
+      key: 1.62, env: 0.9, practical: 1.45, table: 0, heroLight: 0.18,
+      hazeNear: 10, hazeFar: 48, ground: "#584535", ink: 1,
+      scrim: 0.72, dust: 0.5, grain: 0.19, exposure: 1.05
     }
   },
   {
@@ -176,9 +176,9 @@ export const KEYFRAMES = [
       }
     },
     world: {
-      key: 1.0, env: 0.44, practical: 1.5, table: 0, ink: 1,
-      hazeNear: 12, hazeFar: 66, ground: "#251b13",
-      scrim: 0.76, dust: 0.82, grain: 0.21, exposure: 0.97
+      key: 1.12, env: 0.78, practical: 1.95, table: 0, ink: 1,
+      hazeNear: 12, hazeFar: 66, ground: "#3a2a1d",
+      scrim: 0.76, dust: 0.82, grain: 0.21, exposure: 1.05
     }
   },
   {
@@ -202,9 +202,9 @@ export const KEYFRAMES = [
       }
     },
     world: {
-      key: 0.85, env: 0.42, practical: 1.65, table: 0, ink: 1,
-      hazeNear: 13, hazeFar: 72, ground: "#1e150f",
-      scrim: 0.78, dust: 0.92, grain: 0.21, exposure: 0.96
+      key: 0.98, env: 0.76, practical: 2.15, table: 0, ink: 1,
+      hazeNear: 13, hazeFar: 72, ground: "#35271b",
+      scrim: 0.78, dust: 0.92, grain: 0.21, exposure: 1.06
     }
   },
   {
@@ -224,9 +224,9 @@ export const KEYFRAMES = [
       }
     },
     world: {
-      key: 0.85, env: 0.42, practical: 1.65, table: 0, ink: 1,
-      hazeNear: 13, hazeFar: 72, ground: "#1e150f",
-      scrim: 0.78, dust: 0.92, grain: 0.21, exposure: 0.96
+      key: 0.98, env: 0.76, practical: 2.15, table: 0, ink: 1,
+      hazeNear: 13, hazeFar: 72, ground: "#35271b",
+      scrim: 0.78, dust: 0.92, grain: 0.21, exposure: 1.06
     }
   },
   {
@@ -240,9 +240,9 @@ export const KEYFRAMES = [
       mobile: { position: [9.4, -0.4, 11.8], target: [4.0, -5.1, 1.5], fov: 45 }
     },
     world: {
-      key: 0.72, env: 0.36, practical: 1.1, table: 2.2, ink: 1,
-      hazeNear: 10, hazeFar: 54, ground: "#1c1510",
-      scrim: 0.76, dust: 0.5, grain: 0.19, exposure: 0.95
+      key: 0.86, env: 0.68, practical: 1.5, table: 2.5, ink: 1,
+      hazeNear: 10, hazeFar: 54, ground: "#33271e",
+      scrim: 0.76, dust: 0.5, grain: 0.19, exposure: 1.05
     }
   },
   {
@@ -256,9 +256,9 @@ export const KEYFRAMES = [
       mobile: { position: [2.9, 1.5, 10.8], target: [3.3, 0.5, 2.6], fov: 42 }
     },
     world: {
-      key: 1.5, env: 0.6, practical: 0.8, table: 0.5, ink: 1,
-      hazeNear: 9, hazeFar: 30, ground: "#1f1812",
-      scrim: 0.78, dust: 0.38, grain: 0.17, exposure: 1.0
+      key: 1.52, env: 0.86, practical: 1.15, table: 0.8, ink: 1,
+      hazeNear: 9, hazeFar: 30, ground: "#372b21",
+      scrim: 0.78, dust: 0.38, grain: 0.17, exposure: 1.07
     }
   },
   {
@@ -279,9 +279,9 @@ export const KEYFRAMES = [
       // makes this chapter read as air; it does it on the light in the room
       // rather than by turning the page over, because turning it here would
       // put a white page under copy the reader is already halfway through.
-      key: 1.35, env: 0.52, practical: 0.6, table: 0.6, ink: 1,
-      hazeNear: 3.6, hazeFar: 9.4, ground: "#2a211a",
-      scrim: 0.76, dust: 0.3, grain: 0.15, exposure: 0.98
+      key: 1.38, env: 0.8, practical: 0.95, table: 0.9, ink: 1,
+      hazeNear: 3.6, hazeFar: 9.4, ground: "#453729",
+      scrim: 0.76, dust: 0.3, grain: 0.15, exposure: 1.06
     }
   },
   {
@@ -298,9 +298,9 @@ export const KEYFRAMES = [
       mobile: { position: [5.3, -2.2, 7.9], target: [4.4, -6.05, 2.9], fov: 43 }
     },
     world: {
-      key: 0.5, env: 0.2, practical: 0.55, table: 2.1, ink: 1,
-      hazeNear: 6, hazeFar: 28, ground: "#120c08",
-      scrim: 0.8, dust: 0.7, grain: 0.23, exposure: 0.92
+      key: 0.62, env: 0.46, practical: 0.9, table: 2.4, ink: 1,
+      hazeNear: 6, hazeFar: 28, ground: "#241a12",
+      scrim: 0.8, dust: 0.7, grain: 0.23, exposure: 1.02
     }
   }
 ];
