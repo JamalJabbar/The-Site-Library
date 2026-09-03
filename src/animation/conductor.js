@@ -1,7 +1,7 @@
 import gsap from "gsap";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import Lenis from "lenis";
-import { CHAPTERS, KEYFRAMES } from "../data/chapters.js";
+import { CHAPTERS, KEYFRAMES, SELECTED_WORKS_EXIT } from "../data/chapters.js";
 
 gsap.registerPlugin(ScrollTrigger);
 export { gsap, ScrollTrigger };
@@ -183,14 +183,19 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
       .to(".caption--collection", { opacity: 0, y: -18, duration: 0.08, ease: "none" }, 0.92);
 
     // 03  Metadata arrives with the shelf and hands over to the reserved place.
-    // Those two also share a cell, so the handover is a relay and not a
-    // crossfade: the card is off the page before the note is on it.
+    // The exit begins only after the lens has crossed the final volume's
+    // derived focus boundary. Those two also share a cell, so the handover is
+    // a relay and not a crossfade: the card is off the page before the note is
+    // on it.
+    const selectedWorksHandoff = (1 - SELECTED_WORKS_EXIT) / 2;
     scrubbed("#selected-works")
       .fromTo(".works__meta", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.08, ease: "none" }, 0.05)
       .fromTo(".rail", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.08, ease: "none" }, 0.07)
-      .to(".works__meta", { opacity: 0, y: -18, duration: 0.07, ease: "none" }, 0.8)
-      .to(".rail", { opacity: 0.35, duration: 0.08, ease: "none" }, 0.82)
-      .fromTo(".works__reserved", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.09, ease: "none" }, 0.9);
+      .to(".works__meta", { opacity: 0, y: -18, duration: selectedWorksHandoff, ease: "none" }, SELECTED_WORKS_EXIT)
+      .to(".rail", { opacity: 0.35, duration: selectedWorksHandoff, ease: "none" }, SELECTED_WORKS_EXIT)
+      .fromTo(".works__reserved", { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: selectedWorksHandoff, ease: "none" },
+        SELECTED_WORKS_EXIT + selectedWorksHandoff);
 
     /*
       04, 06, 07  The reading chapters.

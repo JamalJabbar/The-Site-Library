@@ -6,7 +6,12 @@
  */
 import { readFile } from "node:fs/promises";
 import { PROJECTS, HERO_VOLUME, SHELF } from "../src/data/projects.js";
-import { CHAPTERS, KEYFRAMES, PRESENTATION } from "../src/data/chapters.js";
+import {
+  CHAPTERS,
+  KEYFRAMES,
+  PRESENTATION,
+  SELECTED_WORKS_EXIT
+} from "../src/data/chapters.js";
 import { auditSurface, auditDimming } from "./surface-audit.mjs";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
@@ -166,6 +171,22 @@ check(Math.abs(SHELF.aimCompact - PRESENTATION.x) < 1e-9,
   "The compact traverse must aim at the volume it is presenting");
 check(PRESENTATION.z > 0 && PRESENTATION.y > 0,
   "A presented volume has to leave the shelf and clear the board");
+
+// Selected-works chrome must remain fully present until the final volume has
+// yielded focus to the reserved place. The exit is derived from that same
+// shelf boundary rather than a hand-tuned percentage that drifts as the row
+// changes.
+const shelfOpenFrame = KEYFRAMES.find((frame) => frame.id === "shelf-open");
+const shelfCloseFrame = KEYFRAMES.find((frame) => frame.id === "shelf-close");
+const lastSlot = SHELF.projectSlots[SHELF.projectSlots.length - 1];
+const lastBookLocal = shelfOpenFrame.local +
+  (shelfCloseFrame.local - shelfOpenFrame.local) *
+  ((lastSlot.x - SHELF.projectSlots[0].x) /
+    (SHELF.emptySlot.x - SHELF.projectSlots[0].x));
+check(SELECTED_WORKS_EXIT > lastBookLocal && SELECTED_WORKS_EXIT < shelfCloseFrame.local,
+  "Selected-works UI must exit after the last book and before the reserved place completes");
+check(conductor.includes("SELECTED_WORKS_EXIT") && world.includes("SHELF.focusReleaseX"),
+  "The selected-works UI and world focus must share the derived final-book boundary");
 
 /* ---- legibility ---------------------------------------------------- */
 

@@ -629,9 +629,10 @@ export class LibraryWorld {
       }
     }
     // The reserved place at the end of the row belongs to nobody yet. It only
-    // takes the frame once the lens is clearly past the last volume, so the
-    // metadata does not drop out while a book is still centred.
-    if (SHELF.emptySlot.x - centre < best * 0.55) nearest = -1;
+    // takes the frame once the lens is clearly past the last volume. This is
+    // also the selected-works UI exit boundary, so the metadata and rail stay
+    // present for the whole time a bound volume is still being read.
+    if (centre > SHELF.focusReleaseX) nearest = -1;
 
     if (nearest !== this.focusIndex) {
       this.focusIndex = nearest;

@@ -304,3 +304,13 @@ export const KEYFRAMES = [
     }
   }
 ];
+
+/**
+ * Local selected-works progress at which the lens has moved beyond the final
+ * bound volume and into the reserved place. UI exits must not begin before
+ * this boundary, or the index fades while volume 07 is still being read.
+ */
+const shelfOpen = KEYFRAMES.find((frame) => frame.id === "shelf-open");
+const shelfClose = KEYFRAMES.find((frame) => frame.id === "shelf-close");
+export const SELECTED_WORKS_EXIT = shelfOpen.local +
+  (shelfClose.local - shelfOpen.local) * SHELF.traverseExit;

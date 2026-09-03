@@ -174,6 +174,10 @@ export const HERO_VOLUME = {
 export const SHELF = (() => {
   const GAP = 0.03;
   const EMPTY_WIDTH = 0.66;
+  // The reserved place does not take focus the instant it becomes the nearest
+  // slot. The last bound volume keeps the frame until the lens has travelled
+  // decisively into the gap after it.
+  const RESERVED_FOCUS_BIAS = 0.55;
   const RADIANS = Math.PI / 180;
 
   // The whole row also rests back into the case. It is a small angle, but a
@@ -243,6 +247,21 @@ export const SHELF = (() => {
     slot.pivot += shift;
   });
 
+  const heroSlot = slots[0];
+  const emptySlot = slots[slots.length - 1];
+  const projectSlots = PROJECTS.map((_, index) => slots[index + 1]);
+  const firstProjectSlot = projectSlots[0];
+  const lastProjectSlot = projectSlots[projectSlots.length - 1];
+  // This is the same boundary used to release the final book in the world and
+  // to begin fading the selected-works UI. Publishing it here keeps those two
+  // events tied to the derived shelf layout when volumes are added or resized.
+  const focusReleaseX = (
+    emptySlot.x + RESERVED_FOCUS_BIAS * lastProjectSlot.x
+  ) / (1 + RESERVED_FOCUS_BIAS);
+  const traverseExit = (
+    focusReleaseX - firstProjectSlot.x
+  ) / (emptySlot.x - firstProjectSlot.x);
+
   return {
     gap: GAP,
     span,
@@ -250,9 +269,11 @@ export const SHELF = (() => {
     tilt: TILT,
     aim: AIM,
     aimCompact: AIM_COMPACT,
-    heroSlot: slots[0],
-    emptySlot: slots[slots.length - 1],
-    projectSlots: PROJECTS.map((_, index) => slots[index + 1]),
+    heroSlot,
+    emptySlot,
+    projectSlots,
+    focusReleaseX,
+    traverseExit,
     all: slots,
     // Standing surface of the shelf board the collection sits on.
     baseY: 0,
