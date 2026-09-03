@@ -70,6 +70,9 @@ const SPINE_OUT = Math.PI / 2;
  *  height from the same angle, so it is published by the shelf, not repeated. */
 const SHELF_TILT = -SHELF.tilt;
 
+/** The three-quarter turn a volume is held at while it is being read. */
+const TURN = THREE.MathUtils.degToRad(21);
+
 /**
  * The pose a volume is shelved in.
  *
@@ -644,8 +647,6 @@ export class LibraryWorld {
     /* -- atmosphere and grade ------------------------------------------- */
     this.scene.fog.near = world.hazeNear;
     this.scene.fog.far = world.hazeFar;
-    this.scene.fog.color.copy(world.ground);
-    this.renderer.toneMappingExposure = world.exposure;
 
     // The ground colour is painted by the page, and hazed geometry dissolves
     // into it, so this is the single definition of the room's atmosphere.
@@ -689,7 +690,7 @@ export class LibraryWorld {
       this.lighting.inspect.position.copy(_v2)
         .addScaledVector(_v3, 0.5)
         .add(_v4.set(-2.2, 2.8, 0.5));
-      this.lighting.inspect.intensity = veil * 11;
+      this.lighting.inspect.intensity = veil * 26;
       this.lighting.inspect.visible = true;
       this.shadowsDirty = true;
     } else if (this.lighting.inspect.visible) {
@@ -825,12 +826,24 @@ export class LibraryWorld {
     this.pointerActive = false;
   }
 
+  /**
+   * The volume under the pointer, if it is one the reader can actually take.
+   *
+   * Only the volume the traverse has drawn out of the row answers. The rest of
+   * the collection is a wall of spines: its fronts cannot be seen, a hover that
+   * eased one of them forward would offer something that cannot be opened, and
+   * a click that opened one would take it out from behind the volume already
+   * standing proud, leaving two in the frame at once — the second frozen in a
+   * half-drawn pose, because the scroll loop that was presenting it stops the
+   * moment an inspection begins.
+   */
   raycast(clientX, clientY) {
     if (this.mode !== "scroll" || this.focusIndex < 0 || !this.proxies.length) return null;
     _v1.set((clientX / window.innerWidth) * 2 - 1, -((clientY / window.innerHeight) * 2 - 1), 0);
     this.raycaster.setFromCamera(_v1, this.camera);
     const hit = this.raycaster.intersectObjects(this.proxies, false)[0];
-    return hit ? hit.object.userData.book : null;
+    const book = hit ? hit.object.userData.book : null;
+    return book && book.userData.index === this.focusIndex ? book : null;
   }
 
   setHovered(book) {
@@ -853,7 +866,10 @@ export class LibraryWorld {
     const fov = this.mobile ? 45 : 32;
     const fill = this.mobile ? 0.4 : 0.6;
     const ndcX = this.mobile ? 0 : -0.44;
-    const ndcY = this.mobile ? 0.32 : -0.02;
+    // Set a little below centre on the wide layout: the volume is held closer
+    // than the framing asked for, so it stands taller in the frame than it used
+    // to, and the way back to the library is written across the top of it.
+    const ndcY = this.mobile ? 0.32 : -0.08;
 
     this.camera.updateMatrixWorld(true);
     const cameraQuaternion = this.camera.getWorldQuaternion(new THREE.Quaternion());
@@ -870,9 +886,39 @@ export class LibraryWorld {
     _v1.set(ndcX * halfWidth, ndcY * halfHeight, -distance).applyQuaternion(cameraQuaternion);
     const position = cameraPosition.clone().add(_v1);
 
+    /*
+      The framing asks for a place; the room decides whether it can have it.
+
+      Solved from the fill alone, that place is among the row the volume was
+      taken from — the case is only so far from the lens, and a volume set at
+      or behind its front face is drawn through its neighbours the whole way
+      out and again while it is being read. The lateral half of the framing is
+      what makes this more than a question of distance: the offset that sets
+      the volume to one side of the frame is measured in the frame's own width,
+      so a wider viewport swings it further along the row, and a volume that
+      cleared the case on one shape of window is inside it on another.
+
+      So the volume is pulled forward along the ray it is already sitting on.
+      Sliding along that ray is what leaves the composition alone: the volume
+      holds exactly the place in frame the framing gave it and only grows, the
+      way a held object does as it is brought closer.
+
+      The clearance is the volume's own reach — turned to its three-quarter
+      pose, how far its back corner sits behind its centre — plus a margin for
+      the row, whose volumes lean and stand proud of the face they are shelved
+      behind.
+    */
+    const reach = book.dimensions.width * 0.5 * Math.sin(TURN) +
+      book.dimensions.depth * 0.5 * Math.cos(TURN);
+    const clear = SHELF.faceZ + reach + 0.8;
+    _v3.copy(position).sub(cameraPosition).normalize();
+    if (position.z < clear && _v3.z < -1e-4) {
+      position.addScaledVector(_v3, (clear - position.z) / _v3.z);
+    }
+
     // A slight three-quarter turn so the boards and the spine both read.
     const quaternion = cameraQuaternion.clone()
-      .multiply(_q1.setFromEuler(new THREE.Euler(0.03, THREE.MathUtils.degToRad(-21), 0)));
+      .multiply(_q1.setFromEuler(new THREE.Euler(0.03, -TURN, 0)));
 
     return {
       camera: { position: cameraPosition, fov },
@@ -885,6 +931,13 @@ export class LibraryWorld {
     this.inspected = book;
     this.setHovered(null);
     book.resetPresentation();
+    // The volume being read is the one lit object in the room. It comes out of
+    // the falloff the shelf was holding it in, which is carried by whatever the
+    // traverse happened to be doing at the moment it was chosen, and the rest
+    // of the collection goes down behind it. Nothing restores this: the scroll
+    // loop owns the dim of every volume, and it takes them all back the frame
+    // after the room returns.
+    book.setDim(0);
     this.projectBooks.forEach((item) => {
       if (item !== book) item.setDim(0.9);
     });

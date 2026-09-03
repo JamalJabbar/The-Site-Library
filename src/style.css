@@ -1188,6 +1188,15 @@ main { position: relative; z-index: 3; }
 .volume__close:hover { opacity: 1; }
 .volume__close:hover svg { transform: translateX(-5px); }
 
+/*
+  The one scrolling region on the page while a volume is open.
+
+  Bounded by the grid area rather than by the viewport, so the sheet stops
+  short of the frame on a laptop the way it does on a phone, and contained,
+  so a gesture that runs past its end stops there instead of chaining to the
+  archive underneath. The bottom padding is what keeps the last line clear of
+  the edge it scrolls to.
+*/
 .volume__sheet {
   grid-column: 2;
   max-width: 44ch;
@@ -1195,6 +1204,7 @@ main { position: relative; z-index: 3; }
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 8px;
+  padding-bottom: 4px;
 }
 
 .volume__number { color: var(--brass-soft); }
@@ -1228,8 +1238,7 @@ main { position: relative; z-index: 3; }
 }
 
 .volume__facts dt,
-.volume__columns h3,
-.volume__outcome h3 {
+.volume__columns h3 {
   font-size: 0.6rem;
   font-weight: 550;
   letter-spacing: 0.18em;
@@ -1257,16 +1266,13 @@ main { position: relative; z-index: 3; }
   margin: 26px 0;
 }
 
-.volume__columns p,
-.volume__outcome p {
+.volume__columns p {
   margin-top: 8px;
   font-family: var(--serif);
   font-size: 0.94rem;
   line-height: 1.5;
   color: rgba(248, 244, 235, 0.78);
 }
-
-.volume__outcome { margin-bottom: 28px; }
 
 .volume__link {
   display: inline-flex;
@@ -1289,9 +1295,25 @@ main { position: relative; z-index: 3; }
 
 .volume__link:hover svg { transform: translate(4px, -4px); }
 
+/*
+  The archive steps back while a volume is being read.
+
+  The chapters are already made inert when the panel opens, and this is the
+  same decision written where it can be seen: the collection rail, the metadata
+  column and the reserved note are all fixed inside a sticky stage, so they do
+  not travel out of the frame on their own and would otherwise be read straight
+  through the sheet set over them. The renderer is not in here, which is what
+  leaves the volume itself lit in an empty room.
+*/
 .panel-open .masthead,
-.panel-open .ledger { opacity: 0; pointer-events: none; }
-.panel-open .masthead { transition: opacity 400ms ease; }
+.panel-open .ledger,
+.panel-open main {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.panel-open .masthead,
+.panel-open main { transition: opacity 400ms ease; }
 
 /* ==========================================================================
    Static edition
@@ -1682,6 +1704,21 @@ main { position: relative; z-index: 3; }
 .reduced-motion .line {
   opacity: 1 !important;
   transform: none !important;
+}
+
+/*
+  The frontispiece copy is fixed to the viewport, because the composition needs
+  the upper line behind the volume and the lower line in front of it, and two
+  halves of one headline cannot share a flow and sit in different layers. In
+  motion the scrubbed exit takes that copy off the page as the chapter leaves.
+  Nothing is scrubbed here, so the chapter the ledger is reporting is what
+  scopes the frontispiece to itself, and the copy is cut rather than faded.
+*/
+.reduced-motion:not([data-chapter="frontispiece"]) .line,
+.reduced-motion:not([data-chapter="frontispiece"]) .kicker,
+.reduced-motion:not([data-chapter="frontispiece"]) .frontispiece__deck,
+.reduced-motion:not([data-chapter="frontispiece"]) .frontispiece__open {
+  display: none;
 }
 
 /* An unlit step of the process list is still legible, as it is in motion. */

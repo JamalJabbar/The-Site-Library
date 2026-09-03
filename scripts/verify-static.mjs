@@ -10,7 +10,7 @@ import { CHAPTERS, KEYFRAMES, PRESENTATION } from "../src/data/chapters.js";
 import { auditSurface, auditDimming } from "./surface-audit.mjs";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [html, css, main, world, environment, book, architecture, ledger, conductor, ui] =
+const [html, css, main, world, environment, book, architecture, ledger, conductor, inspection, ui] =
   await Promise.all([
     read("../index.html"),
     read("../src/style.css"),
@@ -21,6 +21,7 @@ const [html, css, main, world, environment, book, architecture, ledger, conducto
     read("../src/three/architecture.js"),
     read("../src/data/chapters.js"),
     read("../src/animation/conductor.js"),
+    read("../src/animation/inspection.js"),
     read("../src/ui/interface.js")
   ]);
 
@@ -46,7 +47,7 @@ const declares = (selector, property) => {
 
 const required = [
   "slug", "volume", "client", "title", "year", "industry", "category",
-  "services", "technology", "premise", "description", "outcome", "url",
+  "services", "technology", "premise", "description", "url",
   "palette", "book"
 ];
 [...PROJECTS, HERO_VOLUME].forEach((project) => {
@@ -324,6 +325,138 @@ check(main.indexOf("heroIntro = createHeroIntro(world)") < main.lastIndexOf("awa
   "The hero entrance must be created before the preloader is dismissed");
 check(!/\.ready \.frontispiece__open svg[\s\S]*?infinite/.test(css),
   "The hero's load-time arrow animation must not repeat");
+
+/*
+  Reload.
+
+  A reader who reloads in the middle of the collection is put back in their own
+  place by the browser, and everything on the page has to describe that place
+  rather than the frontispiece. Four things make that true, and each is easy to
+  undo without noticing.
+*/
+
+// One: the document is its authored height on the first paint. The browser
+// restores the reader's scroll before any module runs, and it can only restore
+// a place the document is tall enough to hold, so the weights that give the
+// journey its length are declared in the markup as well as in the ledger.
+CHAPTERS.forEach((chapter) => {
+  check(html.includes(`id="${chapter.id}" style="--weight: ${chapter.weight}"`),
+    `${chapter.id} does not carry its ledger weight of ${chapter.weight} screens in the markup`);
+});
+
+// Two: nothing sends the reader back to the top. Forcing the document to zero
+// on load, or taking restoration away from the browser, throws away the place
+// they were reading and opens the archive somewhere they never left it.
+check(!main.includes("history.scrollRestoration"),
+  "Scroll restoration belongs to the browser: the reader's place is not this module's to discard");
+check(!main.includes("window.scrollTo(0, 0)"),
+  "Nothing may move the document to the top on load");
+
+// Three: the frontispiece entrance is an arrival, not a step in booting. It
+// both hides the hero copy and shows it again, so an entrance played halfway
+// down the document fades the opening headline in over whichever chapter the
+// reader is actually on, and one primed but never played leaves the exit a
+// start value of zero, so the headline can never come back.
+check(main.includes("function atFrontispiece()"),
+  "The entrance must be able to tell an arrival from a restored position");
+check(main.includes("if (reduceMotion || !atFrontispiece()) return null;"),
+  "The entrance must not prime the hero copy unless the reader is at the frontispiece");
+const playsEntrance = main.indexOf("function playHeroIntroOnce()");
+check(playsEntrance > 0 && main.slice(playsEntrance, playsEntrance + 400).includes("releaseHeroIntro()"),
+  "An entrance whose reader has left must be released, not played");
+check(main.includes("conductor?.invalidateBeats()") && conductor.includes("function invalidateBeats()"),
+  "A released entrance must have the beats forget the pose they read off it");
+check(main.includes("finished.progress(1)"),
+  "A released entrance must be run to its resting state, which is the only undo GSAP's transform cache respects");
+
+// Four: the position is stated from wherever the document is, not only when it
+// moves. ScrollTrigger reports changes, and a reader who has not moved since
+// the archive opened never produces one, so they would be left described as
+// chapter one over whichever chapter they are on.
+check(conductor.includes("function sync()") && conductor.includes("state.chapter = -1"),
+  "The conductor must be able to restate the position unconditionally");
+check(conductor.indexOf("measure();") < conductor.indexOf(`id: "narrative"`),
+  "The chapter bands must be measured before the first position is published");
+check(main.includes("setAnchors(conductor.sync())"),
+  "Boot must state the restored position, not assume the frontispiece");
+check(!main.includes("world.update(0,"),
+  "The first composed frame must be the reader's position, not the top of the document");
+check(main.includes("smooth = conductor.state.exact"),
+  "The damped copy must be seeded from the reader's position, or the camera travels to them from the hero");
+
+// Under reduced motion nothing is scrubbed, so the fixed frontispiece copy has
+// nothing taking it off the page as its chapter leaves.
+check(css.includes(`.reduced-motion:not([data-chapter="frontispiece"]) .line`),
+  "The frontispiece copy must be scoped to its own chapter under reduced motion");
+
+/*
+  Inspection.
+
+  Opening a volume is the one place the page becomes modal, and three separate
+  things have to agree about it or the panel is unreadable.
+*/
+
+// The archive steps back with the masthead and the ledger. The collection rail
+// and the metadata column are fixed inside a sticky stage, so nothing takes
+// them out of the frame on their own, and they would be read straight through
+// the sheet set over them.
+check(declares(".panel-open main", "opacity: 0"),
+  "The archive must step back behind an open volume, or its copy is read through the sheet");
+
+// The sheet is the only thing on the page meant to move while a volume is
+// open, and it is longer than the frame on a short viewport. The exemption has
+// to cover every kind of gesture, not only the keyboard.
+const blocker = inspection.indexOf("function blockScroll(event)");
+const blockerBody = inspection.slice(blocker, inspection.indexOf("function trapFocus", blocker));
+check(blocker > 0 && blockerBody.includes(`if (event.target.closest?.(".volume__sheet")) return;`) &&
+  !blockerBody.includes(`if (event.type === "keydown") {`),
+  "The sheet exemption must sit outside the keyboard branch, or wheel and touch inside the sheet are still swallowed");
+check(html.includes(`class="volume__sheet" data-lenis-prevent`),
+  "The sheet must be exempt from Lenis, which swallows every gesture on the document while it is stopped");
+check(declares(".volume__sheet", "overscroll-behavior"),
+  "The sheet must contain its own overscroll, or letting a gesture through scrolls the archive behind it");
+
+// The volume being read is the one lit object in the room. It is chosen off a
+// shelf that was dimming it for the row it stood in, and that falloff is
+// carried into the inspection unless it is cleared.
+const opensVolume = world.indexOf("beginInspection(book)");
+check(opensVolume > 0 && world.slice(opensVolume, opensVolume + 900).includes("book.setDim(0);"),
+  "The inspected volume must come out of the shelf's falloff, or it reads as dark as the row behind it");
+
+// Only the volume the traverse is holding out of the row can be opened. Every
+// other volume in the collection is a wall of spines: opening one takes it out
+// from behind the volume already standing proud, and leaves that one frozen in
+// a half-drawn pose, because the loop presenting it stops when an inspection
+// begins.
+const raycasts = world.indexOf("raycast(clientX, clientY)");
+check(raycasts > 0 && world.slice(raycasts, raycasts + 700).includes("book.userData.index === this.focusIndex"),
+  "The pointer must only find the volume that is standing out of the row");
+check(main.includes("if (world.focusIndex !== index) return false;"),
+  "Opening a volume must refuse anything the traverse is not holding out");
+check(main.includes("function volumeStandingOut(index"),
+  "The index rail scrolls before it opens, so it must wait for the volume to be drawn out");
+const railClick = main.indexOf("if (world.focusIndex !== index) await bringVolumeIntoView(index);");
+check(railClick > 0 && main.slice(railClick, railClick + 200).includes("await volumeStandingOut(index)"),
+  "The rail must wait between bringing a volume into view and opening it");
+
+// The reading pose is solved from the framing, and the framing on its own puts
+// the volume among the row it came out of: the case is a fixed distance from
+// the lens, and a volume placed at or behind its face is drawn through its
+// neighbours all the way out and again while it is being read.
+const plans = world.indexOf("planInspection(book)");
+const planBody = world.slice(plans, world.indexOf("beginInspection(book)", plans));
+check(plans > 0 && planBody.includes("if (position.z < clear") &&
+  planBody.includes("position.addScaledVector(_v3, (clear - position.z) / _v3.z)") &&
+  planBody.includes("SHELF.faceZ"),
+  "The reading pose must be held in front of the case, or the volume is read inside the shelf");
+check(planBody.includes("book.dimensions.width * 0.5 * Math.sin(TURN)"),
+  "The clearance must be the volume's own reach, so a larger volume is held further forward");
+
+// The selected outcome is gone from the panel, so nothing may still be reaching
+// for it: an orphan hook writes to nothing, and an orphan field feeds nothing.
+check(!html.includes("data-panel-outcome") && !ui.includes("data-panel-outcome") &&
+  !css.includes(".volume__outcome"),
+  "The selected outcome section must be gone from the markup, the panel and the stylesheet together");
 
 const visible = html.replace(/<!--[\s\S]*?-->/g, "");
 check(!visible.includes("—") && !visible.includes("–"),

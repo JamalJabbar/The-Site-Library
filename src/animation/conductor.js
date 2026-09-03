@@ -72,23 +72,51 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     return 0;
   }
 
+  /**
+   * States the position once. Every consumer of the journey is written from
+   * here and from nowhere else, so a reader who arrives in the middle of the
+   * document is described exactly as one who scrolled there.
+   */
+  function publish(t, direction, scrolled) {
+    state.exact = t;
+    state.direction = direction;
+    document.documentElement.classList.toggle("is-scrolled", scrolled > 90);
+    const next = chapterAt(t);
+    if (next !== state.chapter) {
+      state.chapter = next;
+      onChapter?.(next, CHAPTERS[next]);
+    }
+    onProgress?.(t);
+  }
+
+  // The bands have to exist before the first position is published. A reload
+  // halfway down the document restores the reader's place before this module
+  // runs, so the trigger's opening update carries a real progress value, and
+  // chapterAt would answer it out of an empty list.
+  measure();
+
   const progress = ScrollTrigger.create({
     id: "narrative",
     start: 0,
     end: "max",
-    onUpdate: (self) => {
-      state.exact = self.progress;
-      state.direction = self.direction;
-      document.documentElement.classList.toggle("is-scrolled", self.scroll() > 90);
-      const next = chapterAt(self.progress);
-      if (next !== state.chapter) {
-        state.chapter = next;
-        onChapter?.(next, CHAPTERS[next]);
-      }
-      onProgress?.(self.progress);
-    }
+    onUpdate: (self) => publish(self.progress, self.direction, self.scroll())
   });
   cleanup.push(() => progress.kill());
+
+  /**
+   * Re-measures the document and restates the position.
+   *
+   * ScrollTrigger only calls onUpdate when progress changes, so a reader who
+   * has not moved since the archive opened would never be described at all:
+   * the ledger would read chapter one over whichever chapter they are on.
+   * Forgetting the chapter first is what makes the restatement unconditional.
+   */
+  function sync() {
+    const anchors = measure();
+    state.chapter = -1;
+    publish(progress.progress, state.direction, window.scrollY);
+    return anchors;
+  }
 
   /* ------------------------------------------------------------------ *
    * DOM beats
@@ -263,6 +291,21 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     scrubs.forEach((timeline) => timeline.totalDuration(1));
   }
 
+  /**
+   * Forgets the pose the choreographed copy is interpolating from.
+   *
+   * A beat records where a block was the first time it renders, and everything
+   * it does afterwards is measured from there. Nothing calls this on the way
+   * through the document, because on that route the recorded pose is the right
+   * one. It exists for the moment the frontispiece entrance is abandoned: the
+   * copy was primed for an entrance, a beat may already have read that priming
+   * as the place the copy lives, and the copy has since been put back where the
+   * stylesheet left it.
+   */
+  function invalidateBeats() {
+    scrubs.forEach((timeline) => timeline.invalidate());
+  }
+
   function attachAnchors(scrollTo) {
     const handler = (event) => {
       const link = event.target.closest?.('a[href^="#"]');
@@ -299,12 +342,15 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     state,
     lenis,
     measure,
+    sync,
+    invalidateBeats,
     scrollTo,
     scrollForProgress,
     raf: (time) => lenis?.raf(time),
     refresh: () => {
       measure();
       ScrollTrigger.refresh();
+      sync();
     },
     stop: () => lenis?.stop(),
     start: () => lenis?.start(),

@@ -149,7 +149,13 @@ export function buildLighting({ scene, quality }) {
   group.add(heroKey, heroKey.target);
 
   // Controlled studio light for a volume taken off the shelf. Off until needed.
-  const inspect = new THREE.SpotLight(0xfff1da, 0, 22, Math.PI * 0.24, 0.6, 1.2);
+  //
+  // The cone is narrow and the throw is short, and that is what makes the
+  // volume the lit object rather than simply a brighter part of a brighter
+  // room. A wide source at this intensity reaches the case standing behind the
+  // volume, so raising it lifts the room by as much as the book and the volume
+  // reads no more separated than it did before.
+  const inspect = new THREE.SpotLight(0xfff1da, 0, 11, Math.PI * 0.13, 0.6, 1.2);
   inspect.name = "inspection-key";
   inspect.visible = false;
   inspect.castShadow = false;

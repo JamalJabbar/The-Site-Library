@@ -25,7 +25,6 @@ export const PROJECTS = [
     premise: "A composed digital home for a renovation practice built on clarity and trust.",
     description:
       "Measured typography, architectural pacing and precise project storytelling turn a complex service into a confident client experience.",
-    outcome: "A focused flagship that gives the work room to speak and makes the enquiry path immediate.",
     url: "https://thesitelibrary.com/work/assurance-remodeling",
     palette: { primary: "#2b3427", secondary: "#d6c8ae", foil: "#b7975e", ink: "#efe8d6" },
     book: { width: 1.30, height: 2.34, depth: 0.34, cloth: "linen", motif: "plan", layout: "stacked" }
@@ -43,7 +42,6 @@ export const PROJECTS = [
     premise: "A visual system for a studio working where computation meets culture.",
     description:
       "A strict typographic field is interrupted by responsive generative marks, allowing technical work to feel human and authored.",
-    outcome: "A flexible publishing system that holds research, commissions and experiments with equal confidence.",
     url: "https://thesitelibrary.com/work/node-jm",
     palette: { primary: "#191b1d", secondary: "#c7ccd0", foil: "#cdd3d6", ink: "#f2efe7" },
     book: { width: 1.12, height: 2.52, depth: 0.29, cloth: "buckram", motif: "node", layout: "display" }
@@ -61,7 +59,6 @@ export const PROJECTS = [
     premise: "A reservation and commerce experience shaped by the quiet rhythm of a private dining room.",
     description:
       "Photography, menus and objects unfold with an unhurried cadence while booking and purchase actions remain direct.",
-    outcome: "A single digital address for the house, its seasonal table and its small collection of objects.",
     url: "https://thesitelibrary.com/work/maison-orra",
     palette: { primary: "#5b2a2d", secondary: "#d6c4ae", foil: "#c8a271", ink: "#f4ead8" },
     book: { width: 1.42, height: 2.26, depth: 0.38, cloth: "cloth", motif: "arch", layout: "centred" }
@@ -79,7 +76,6 @@ export const PROJECTS = [
     premise: "A searchable field record that treats landscape research as living evidence.",
     description:
       "Maps, notes, specimens and long-form essays share one disciplined index without flattening the character of the source material.",
-    outcome: "An expandable archive that serves specialists while inviting the public to explore.",
     url: "https://thesitelibrary.com/work/fieldworks-archive",
     palette: { primary: "#4a5546", secondary: "#c8c3a7", foil: "#b5a065", ink: "#eeead9" },
     book: { width: 1.36, height: 2.64, depth: 0.32, cloth: "linen", motif: "topography", layout: "stacked" }
@@ -97,7 +93,6 @@ export const PROJECTS = [
     premise: "A nocturnal showroom for limited furniture and sculptural domestic objects.",
     description:
       "Controlled light and close material studies create a measured sense of discovery without slowing the path to specifications or purchase.",
-    outcome: "A product experience that makes each release feel considered, scarce and physically present.",
     url: "https://thesitelibrary.com/work/selene-objects",
     palette: { primary: "#1e2a36", secondary: "#9da7ad", foil: "#c6cbc8", ink: "#eef1ee" },
     book: { width: 1.20, height: 2.42, depth: 0.42, cloth: "buckram", motif: "moon", layout: "centred" }
@@ -115,7 +110,6 @@ export const PROJECTS = [
     premise: "A precise project index for an architecture practice defined by material economy.",
     description:
       "The interface borrows its order from drawing sets, then softens that rigour with generous image fields and calm transitions.",
-    outcome: "A durable portfolio framework that can absorb projects without losing hierarchy or character.",
     url: "https://thesitelibrary.com/work/northline-atelier",
     palette: { primary: "#b3aca0", secondary: "#313331", foil: "#6e624f", ink: "#26251f" },
     book: { width: 1.50, height: 2.48, depth: 0.30, cloth: "paper", motif: "section", layout: "display" }
@@ -133,7 +127,6 @@ export const PROJECTS = [
     premise: "A publishing platform that gives each title a distinct room inside one recognisable house.",
     description:
       "Flexible title pages, a disciplined catalogue and considered reading views balance each book's identity with the publisher's own voice.",
-    outcome: "A catalogue designed for discovery, close reading and long-term growth.",
     url: "https://thesitelibrary.com/work/morrow-editions",
     palette: { primary: "#7a5b4a", secondary: "#d6c5aa", foil: "#c9a877", ink: "#f3ebdc" },
     book: { width: 1.30, height: 2.20, depth: 0.36, cloth: "cloth", motif: "folio", layout: "stacked" }
@@ -152,7 +145,6 @@ export const HERO_VOLUME = {
   technology: ["Three.js", "GSAP", "Lenis"],
   premise: "Digital editions for distinctive brands.",
   description: "A working index of authored digital identities and web experiences.",
-  outcome: "Websites worth keeping.",
   url: "#commission",
   // Deep oxblood cloth with restrained brass. The frontispiece is a bleached
   // cream field, so the studio's own volume has to be the one dark object in

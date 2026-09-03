@@ -81,9 +81,18 @@
       <span class="ledger__track" aria-hidden="true"><i data-progress-fill></i></span>
     </aside>
 
+    <!--
+      Each chapter carries its own scroll weight, so the document is already
+      its authored height on the first paint. The ledger in src/data/chapters.js
+      is still the source of truth and the entry module writes these same values
+      again; they are declared here because the browser restores the reader's
+      scroll position before any module runs, and it can only restore a place
+      that the document is tall enough to hold. verify-static.mjs fails if a
+      weight here and a weight in the ledger ever disagree.
+    -->
     <main id="main">
       <!-- 01 -->
-      <section class="chapter" id="frontispiece" aria-labelledby="frontispiece-title">
+      <section class="chapter" id="frontispiece" style="--weight: 1" aria-labelledby="frontispiece-title">
         <div class="chapter__stage frontispiece">
           <p class="kicker" data-hero-kicker>The Site Library / Independent digital design studio</p>
           <h1 class="frontispiece__title" id="frontispiece-title">
@@ -102,7 +111,7 @@
       </section>
 
       <!-- 02 -->
-      <section class="chapter chapter--tall" id="stacks" aria-labelledby="stacks-title">
+      <section class="chapter chapter--tall" id="stacks" style="--weight: 5.4" aria-labelledby="stacks-title">
         <h2 class="sr-only" id="stacks-title">Into the stacks</h2>
         <div class="chapter__stage stacks">
           <p class="caption caption--room" data-stacks-room>The room was here the whole time.</p>
@@ -114,7 +123,7 @@
       </section>
 
       <!-- 03 -->
-      <section class="chapter chapter--tall" id="selected-works" aria-labelledby="selected-title">
+      <section class="chapter chapter--tall" id="selected-works" style="--weight: 6.5" aria-labelledby="selected-title">
         <h2 class="sr-only" id="selected-title">Selected works</h2>
         <div class="chapter__stage works">
           <div class="works__meta" data-meta aria-live="polite">
@@ -138,7 +147,7 @@
       </section>
 
       <!-- 04 -->
-      <section class="chapter chapter--tall" id="reading-room" aria-labelledby="reading-title">
+      <section class="chapter chapter--tall" id="reading-room" style="--weight: 2.4" aria-labelledby="reading-title">
         <div class="chapter__stage reading">
           <div class="reading__lede">
             <h2 id="reading-title">A website should<br />feel authored.</h2>
@@ -173,7 +182,7 @@
       </section>
 
       <!-- 05 -->
-      <section class="chapter chapter--tall" id="binding" aria-labelledby="binding-title">
+      <section class="chapter chapter--tall" id="binding" style="--weight: 3.4" aria-labelledby="binding-title">
         <div class="chapter__stage binding">
           <div class="binding__lede">
             <h2 id="binding-title">Every volume<br />is bound<br />differently.</h2>
@@ -190,7 +199,7 @@
       </section>
 
       <!-- 06 -->
-      <section class="chapter chapter--tall" id="studio" aria-labelledby="studio-title">
+      <section class="chapter chapter--tall" id="studio" style="--weight: 2.4" aria-labelledby="studio-title">
         <div class="chapter__stage studio">
           <div class="studio__lede">
             <h2 id="studio-title">Small studio.<br />Deliberate output.</h2>
@@ -214,7 +223,7 @@
       </section>
 
       <!-- 07 -->
-      <section class="chapter chapter--tall" id="commission" aria-labelledby="commission-title">
+      <section class="chapter chapter--tall" id="commission" style="--weight: 2.6" aria-labelledby="commission-title">
         <div class="chapter__stage commission">
           <div class="commission__body">
             <h2 id="commission-title">Your place<br />on the shelf.</h2>
@@ -242,7 +251,13 @@
         <svg viewBox="0 0 22 12" fill="none" aria-hidden="true"><path d="M22 6H1m0 0 5-5M1 6l5 5" /></svg>
         <span>Return to library</span>
       </button>
-      <div class="volume__sheet">
+      <!--
+        The one scrolling region on the page while a volume is open. Lenis is
+        stopped for the duration, and a stopped Lenis swallows every wheel and
+        touch gesture on the document to keep the journey still; this is the
+        attribute that tells it to let go of the gestures that start in here.
+      -->
+      <div class="volume__sheet" data-lenis-prevent>
         <p class="volume__number"><span data-panel-volume>Volume 01</span> / 07</p>
         <h2 id="volume-title" data-panel-title>Assurance Remodeling</h2>
         <p class="volume__premise" data-panel-premise></p>
@@ -255,10 +270,6 @@
         <div class="volume__columns">
           <div><h3>Services</h3><p data-panel-services></p></div>
           <div><h3>Technology</h3><p data-panel-technology></p></div>
-        </div>
-        <div class="volume__outcome">
-          <h3>Selected outcome</h3>
-          <p data-panel-outcome></p>
         </div>
         <a class="volume__link" data-panel-url href="#selected-works">
           <span>Visit live site</span>

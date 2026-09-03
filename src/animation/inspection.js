@@ -26,12 +26,20 @@ export function createInspection({ world, conductor, panel, onOpen, onClose, red
   const sheet = panel.querySelector(".volume__sheet");
   const closeButton = panel.querySelector("[data-close-panel]");
 
+  /**
+   * Holds the journey still while a volume is open.
+   *
+   * The sheet is the one thing on the page that is meant to move, so a gesture
+   * that starts inside it is let through whatever kind it is. Its own
+   * overscroll-behavior is what makes that safe: a gesture that runs past the
+   * end of the sheet stops there rather than chaining to the document, so the
+   * archive cannot be scrolled out from under the reader by overscrolling the
+   * text they are reading.
+   */
   function blockScroll(event) {
     if (!current) return;
-    if (event.type === "keydown") {
-      if (!SCROLL_KEYS.has(event.key)) return;
-      if (event.target.closest?.(".volume__sheet")) return;
-    }
+    if (event.type === "keydown" && !SCROLL_KEYS.has(event.key)) return;
+    if (event.target.closest?.(".volume__sheet")) return;
     event.preventDefault();
   }
 

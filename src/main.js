@@ -29,10 +29,16 @@ document.documentElement.classList.toggle("reduced-motion", reduceMotion);
 const canvas = document.querySelector("#world");
 const loaderRoot = document.querySelector("[data-loader]");
 
-if (!window.location.hash) {
-  history.scrollRestoration = "manual";
-  window.scrollTo(0, 0);
-}
+/*
+  Where the reader is, is where the archive opens.
+
+  The chapters carry their scroll weights in the markup, so the document is
+  already its full height when the browser restores a reload's scroll position,
+  and it restores the exact pixel. Nothing in this module may move the page
+  afterwards: a reload in the middle of the collection is not an arrival at the
+  frontispiece, and everything below reads the restored position rather than
+  assuming zero.
+*/
 
 const ui = createInterface({ projects: PROJECTS, reduceMotion });
 
@@ -49,13 +55,34 @@ let heroIntro = null;
 let heroIntroPlayed = false;
 
 /**
+ * Whether the reader is still standing at the frontispiece.
+ *
+ * The frontispiece is the first screen of the document, so this is simply
+ * whether the page has been moved at all — by a restored reload, a fragment
+ * link, or the reader's own hand while the bookplate was up.
+ */
+function atFrontispiece() {
+  return window.scrollY < 1;
+}
+
+/**
  * Prime the opening pose while the loader still covers the page, then return
  * a paused, finite timeline. Live pointer motion owns presentYaw/presentPitch;
  * these additive intro offsets keep the opening turn from being overwritten by
  * the render loop.
+ *
+ * The entrance belongs to a reader who arrives at the frontispiece, and it is
+ * not built for anyone else. A reload halfway down the collection restores the
+ * reader's place before the archive opens: the frontispiece has already been
+ * read and left, and its copy is being held out of the frame by the scrubbed
+ * exit that owns it. Priming there would hand that exit a start value of zero,
+ * so the headline could never come back, and playing it would fade the opening
+ * headline in over whichever chapter the reader is actually on. Both halves
+ * are gated on the same question, because priming without playing strands the
+ * copy exactly as badly as playing without priming.
  */
 function createHeroIntro(targetWorld) {
-  if (reduceMotion) return null;
+  if (reduceMotion || !atFrontispiece()) return null;
 
   document.documentElement.classList.add("hero-intro-pending");
   gsap.set(targetWorld.heroBook.scale, { x: 1.075, y: 1.075, z: 1.075 });
@@ -85,9 +112,36 @@ function createHeroIntro(targetWorld) {
     .to(".frontispiece__open", { autoAlpha: 0.72, duration: 0.7 }, 0.96);
 }
 
+/**
+ * Ends the entrance without playing it, and gives the frontispiece copy back
+ * to the scroll that owns it.
+ *
+ * The entrance finishes on exactly the resting state the stylesheet authors,
+ * so running it to its end in place is the undo: clearing the primed values
+ * instead does not work, because GSAP holds the transform it primed in its own
+ * cache and writes it back underneath the next tween. Refreshing afterwards is
+ * what has the scrubbed exit re-read that resting state as its start, so the
+ * copy ends up wherever the reader's position says it should be.
+ */
+function releaseHeroIntro() {
+  const finished = heroIntro;
+  heroIntro = null;
+  finished.progress(1);
+  finished.kill();
+  document.documentElement.classList.remove("hero-intro-pending");
+  conductor?.invalidateBeats();
+  conductor?.refresh();
+}
+
 function playHeroIntroOnce() {
   if (!heroIntro || heroIntroPlayed) return;
   heroIntroPlayed = true;
+  // The bookplate does not hold the page still, so the reader can have left
+  // the frontispiece in the time it took the archive to open.
+  if (!atFrontispiece()) {
+    releaseHeroIntro();
+    return;
+  }
   heroIntro.play(0);
 }
 
@@ -95,11 +149,42 @@ function playHeroIntroOnce() {
  * Interaction
  * ------------------------------------------------------------------ */
 
+/**
+ * Takes a volume off the shelf.
+ *
+ * Only the volume the traverse is holding out of the row can be opened, and
+ * this is the one gate every route passes through: the pointer, the touch tap
+ * and the index rail all end here. The rail is the route that can arrive early
+ * — it scrolls the shelf to the volume first — so it waits for the volume to
+ * actually be standing out before it asks.
+ */
 function openVolume(index, source) {
   const book = world?.projectBooks[index];
-  if (!book || inspection?.current || inspection?.busy) return;
+  if (!book || inspection?.current || inspection?.busy) return false;
+  if (world.focusIndex !== index) return false;
   ui.setFocus(index);
   inspection.open(book, source);
+  return true;
+}
+
+/**
+ * Resolves once the traverse has drawn the volume out of the row.
+ *
+ * Focus is derived from where the lens is pointing, so it lands the frame
+ * after the scroll does rather than with it. The deadline is here because a
+ * promise that never settles would leave the rail button dead.
+ */
+function volumeStandingOut(index, deadline = 900) {
+  if (world?.focusIndex === index) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const started = performance.now();
+    const look = () => {
+      if (world?.focusIndex === index) return resolve(true);
+      if (performance.now() - started > deadline) return resolve(false);
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
 }
 
 /**
@@ -138,6 +223,7 @@ function attachRail() {
     });
     button.addEventListener("click", async () => {
       if (world.focusIndex !== index) await bringVolumeIntoView(index);
+      await volumeStandingOut(index);
       openVolume(index, button);
     });
   });
@@ -368,8 +454,8 @@ async function boot() {
   }
 
   // The first authored frame is composed before the bookplate lifts.
-  world.setAnchors(conductor.measure());
-  world.update(0, 1 / 60, true);
+  world.setAnchors(conductor.sync());
+  world.update(conductor.state.exact, 1 / 60, true);
   world.render(1 / 60);
 
   // The collection streams in behind the loader, one volume per frame.
@@ -381,10 +467,13 @@ async function boot() {
   endCollection();
   manager.itemEnd("boot");
 
-  world.setAnchors(conductor.measure());
   ScrollTrigger.refresh();
-  world.setAnchors(conductor.measure());
-  world.update(conductor.state.exact, 1 / 60, true);
+  world.setAnchors(conductor.sync());
+  // The damped copy is seeded from the reader's own position, not from zero.
+  // Left at zero it would open on the frontispiece and travel down to them.
+  smooth = conductor.state.exact;
+  conductor.state.smooth = smooth;
+  world.update(smooth, 1 / 60, true);
   world.render(1 / 60);
 
   gsap.ticker.lagSmoothing(0);
@@ -415,7 +504,7 @@ function handleResize() {
   if (conductor) {
     world?.setAnchors(conductor.measure());
     ScrollTrigger.refresh();
-    world?.setAnchors(conductor.measure());
+    world?.setAnchors(conductor.sync());
   }
 }
 

@@ -192,7 +192,6 @@ export function createInterface({ projects, reduceMotion }) {
     q("[data-panel-description]").textContent = project.description;
     q("[data-panel-services]").textContent = project.services.join(" / ");
     q("[data-panel-technology]").textContent = project.technology.join(" / ");
-    q("[data-panel-outcome]").textContent = project.outcome;
     const link = q("[data-panel-url]");
     link.href = project.url;
     link.setAttribute("aria-label", `Visit the ${project.title} site, opens the live project`);

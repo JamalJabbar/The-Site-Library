@@ -21,7 +21,10 @@
  *      every inherited opacity folded in.
  */
 
-const IGNORED = ".sr-only, [hidden], [data-loader], .volume, .edition, .cursor";
+// The inspection panel is not excluded here. It is hidden for the whole of a
+// normal sweep and [hidden] already covers that, so naming it would only ever
+// take it out of the audit at the one moment it is on screen and being read.
+const IGNORED = ".sr-only, [hidden], [data-loader], .edition, .cursor";
 
 /* ------------------------------------------------------------------ *
  * Colour
