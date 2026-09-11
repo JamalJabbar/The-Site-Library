@@ -6,6 +6,18 @@ import { CHAPTERS, KEYFRAMES, SELECTED_WORKS_EXIT } from "../data/chapters.js";
 gsap.registerPlugin(ScrollTrigger);
 export { gsap, ScrollTrigger };
 
+const WHEEL_SCALE = {
+  transition: 0.62,
+  reading: 0.4
+};
+
+// A higher lerp makes Lenis catch up sooner, so a quick wheel gesture does not
+// keep carrying the reader through the next several screens. The cap handles
+// high-resolution wheels and trackpads that occasionally emit one very large
+// delta before the normalised chapter scale is applied.
+const SCROLL_LERP = 0.22;
+const MAX_WHEEL_STEP = 72;
+
 /**
  * Native document scroll is the only source of truth.
  *
@@ -24,6 +36,7 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     smooth: 0,
     direction: 1,
     chapter: 0,
+    wheelScale: WHEEL_SCALE.reading,
     anchors: KEYFRAMES.map((_, index) => index / (KEYFRAMES.length - 1)),
     ranges: []
   };
@@ -37,7 +50,21 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
 
   let lenis = null;
   if (!reduceMotion) {
-    lenis = new Lenis({ lerp: 0.08, wheelMultiplier: 1, smoothWheel: true });
+    lenis = new Lenis({
+      lerp: SCROLL_LERP,
+      smoothWheel: true,
+      // Lenis exposes the normalized wheel delta before it is consumed. The
+      // current chapter writes the scale, so input eases down while copy is
+      // held and opens back up through the visual transitions between beats.
+      virtualScroll: (data) => {
+        if (!data.event.type.includes("wheel") || data.event.ctrlKey) return;
+        data.deltaY *= state.wheelScale;
+        data.deltaY = Math.sign(data.deltaY) * Math.min(
+          Math.abs(data.deltaY),
+          MAX_WHEEL_STEP
+        );
+      }
+    });
     lenis.on("scroll", ScrollTrigger.update);
   }
 
@@ -72,6 +99,18 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     return 0;
   }
 
+  /** Wheel strength at a narrative position, authored with the chapter copy. */
+  function wheelScaleAt(t, index = chapterAt(t)) {
+    const range = state.ranges[index];
+    const window = CHAPTERS[index]?.readingWindow;
+    if (!range || !window) return WHEEL_SCALE.transition;
+    const span = Math.max(1e-6, range.end - range.start);
+    const local = (t - range.start) / span;
+    return local >= window[0] && local <= window[1]
+      ? WHEEL_SCALE.reading
+      : WHEEL_SCALE.transition;
+  }
+
   /**
    * States the position once. Every consumer of the journey is written from
    * here and from nowhere else, so a reader who arrives in the middle of the
@@ -82,6 +121,7 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     state.direction = direction;
     document.documentElement.classList.toggle("is-scrolled", scrolled > 90);
     const next = chapterAt(t);
+    state.wheelScale = wheelScaleAt(t, next);
     if (next !== state.chapter) {
       state.chapter = next;
       onChapter?.(next, CHAPTERS[next]);
@@ -115,6 +155,11 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     const anchors = measure();
     state.chapter = -1;
     publish(progress.progress, state.direction, window.scrollY);
+    // ScrollTrigger does not always emit an update when the restored scroll
+    // position is unchanged. Force the scrubbed DOM beats to render here so
+    // typewriters resume at the reader's actual position after reload/refresh.
+    ScrollTrigger.update();
+    typewriterSyncs.forEach((renderAtCurrentProgress) => renderAtCurrentProgress());
     return anchors;
   }
 
@@ -138,6 +183,7 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
    * the overlap.
    */
   const scrubs = [];
+  const typewriterSyncs = [];
 
   function scrubbed(trigger, options = {}) {
     const timeline = gsap.timeline({
@@ -157,6 +203,85 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
     return timeline;
   }
 
+  function addTypewriterBeat(timeline, typewriter, state, start, duration) {
+    timeline.fromTo(state, { characters: 0 }, {
+      characters: typewriter.characters.length,
+      duration,
+      ease: "none",
+      snap: { characters: 1 },
+      onUpdate: () => typewriter.render(state.characters)
+    }, start);
+
+    typewriterSyncs.push(() => {
+      const progress = timeline.scrollTrigger?.progress ?? 0;
+      const local = Math.max(0, Math.min(1, (progress - start) / duration));
+      state.characters = local * typewriter.characters.length;
+      typewriter.render(state.characters);
+    });
+  }
+
+  /**
+   * Builds a stable line of individually revealable characters.
+   *
+   * Words keep their final width even while their characters are hidden, so
+   * typing never changes the line breaks or makes centred copy wander across
+   * the frame. The untouched source remains in the accessibility tree, while
+   * reduced motion returns before this transformation and keeps it visible.
+   */
+  function prepareTypewriter(selector) {
+    const root = document.querySelector(selector);
+    const source = root?.querySelector("[data-typewriter-source]");
+    const sentence = source?.textContent.replace(/\s+/g, " ").trim();
+    const breakAfter = source?.dataset.typewriterBreakAfter;
+    if (!root || !source || !sentence) return null;
+
+    source.classList.add("sr-only");
+    const visual = document.createElement("span");
+    visual.className = "caption__typewriter";
+    visual.setAttribute("aria-hidden", "true");
+    const characters = [];
+
+    sentence.split(/(\s+)/).forEach((token) => {
+      if (!token.trim()) {
+        visual.append(document.createTextNode(" "));
+        return;
+      }
+
+      const word = document.createElement("span");
+      word.className = "caption__typewriter-word";
+      Array.from(token).forEach((character) => {
+        const glyph = document.createElement("span");
+        glyph.className = "caption__typewriter-character";
+        glyph.textContent = character;
+        word.append(glyph);
+        characters.push(glyph);
+      });
+      visual.append(word);
+      if (breakAfter === token) visual.append(document.createElement("br"));
+    });
+
+    root.append(visual);
+
+    const render = (value) => {
+      const count = Math.max(0, Math.min(characters.length, Math.round(value)));
+      visual.classList.toggle("is-complete", count === characters.length);
+      characters.forEach((glyph, index) => {
+        const visible = index < count;
+        glyph.classList.toggle("is-visible", visible);
+        glyph.classList.toggle("is-caret",
+          visible && index === count - 1);
+      });
+    };
+    render(0);
+
+    cleanup.push(() => {
+      visual.remove();
+      source.classList.remove("sr-only");
+    });
+
+    return { characters, render };
+  }
+
 
   function buildBeats() {
     if (reduceMotion) return;
@@ -170,13 +295,20 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
       .to(".line--upper", { xPercent: -5, opacity: 0, duration: 0.46, ease: "none" }, 0.1)
       .to(".line--lower", { xPercent: 7, opacity: 0, duration: 0.46, ease: "none" }, 0.18);
 
-    // 02  Two captions on the same centre line, so the first has to be gone
-    // before the second arrives. They share a grid cell: any overlap in time
-    // is an overlap in space.
-    scrubbed("#stacks")
-      .fromTo(".caption--room", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.1, ease: "none" }, 0.3)
-      .to(".caption--room", { opacity: 0, y: -20, duration: 0.09, ease: "none" }, 0.52)
-      .fromTo(".caption--collection", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.1, ease: "none" }, 0.7)
+    // 02  The collection caption owns the centre line for the full reveal.
+    // Scroll advances one character at a time, then holds the completed line
+    // long enough to read before the chapter releases it.
+    const typewriter = prepareTypewriter("[data-typewriter]");
+    const typing = { characters: 0 };
+    const typewriterStart = 0.38;
+    const typewriterDuration = 0.28;
+    const stacks = scrubbed("#stacks")
+      .fromTo(".caption--collection", { opacity: 0, y: 26 },
+        { opacity: 1, y: 0, duration: 0.1, ease: "none" }, 0.28);
+    if (typewriter) {
+      addTypewriterBeat(stacks, typewriter, typing, typewriterStart, typewriterDuration);
+    }
+    stacks
       // Gone before the stage is: the last screen of a chapter is the one it
       // spends travelling out of frame, and copy still lit while that happens
       // is read up through the masthead over the chapter arriving behind it.
@@ -228,13 +360,28 @@ export function createConductor({ reduceMotion, onProgress, onChapter }) {
         { opacity: 1, y: 0, duration: 0.12, ease: "none" }, 0.04)
       .fromTo([".studio__lead", ".studio__quote", ".studio__facts > div"], { opacity: 0 },
         { opacity: 1, duration: 0.1, stagger: 0.035, ease: "none" }, 0.1)
-      .to([".studio__lede", ".studio__body"], { opacity: 0, y: -12, duration: 0.1, ease: "none" }, 0.88);
+      .to([".studio__lede", ".studio__body"], { opacity: 0, y: -12, duration: 0.1, ease: "none" }, 0.94);
 
     // The last chapter keeps what it brings: the reader finishes here, and the
     // address has to still be on the page when they do.
-    scrubbed("#commission")
+    const footerTypewriter = prepareTypewriter("[data-typewriter-footer]");
+    const footerTyping = { characters: 0 };
+    const footerTypewriterStart = 0.08;
+    const footerTypewriterDuration = 0.24;
+    const commission = scrubbed("#commission");
+    commission
       .fromTo(".commission__body", { opacity: 0, y: 26 },
-        { opacity: 1, y: 0, duration: 0.12, ease: "none" }, 0.04)
+        { opacity: 1, y: 0, duration: 0.12, ease: "none" }, 0.04);
+    if (footerTypewriter) {
+      addTypewriterBeat(
+        commission,
+        footerTypewriter,
+        footerTyping,
+        footerTypewriterStart,
+        footerTypewriterDuration
+      );
+    }
+    commission
       .fromTo([".commission__ask", ".commission__cta", ".commission__email"], { opacity: 0 },
         { opacity: 1, duration: 0.1, stagger: 0.04, ease: "none" }, 0.12)
       .fromTo(".colophon", { opacity: 0 },

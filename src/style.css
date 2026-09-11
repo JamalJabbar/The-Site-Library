@@ -728,23 +728,51 @@ main { position: relative; z-index: 3; }
   opacity: 0;
 }
 
-.caption--room {
-  font-family: var(--serif);
-  font-size: clamp(1.5rem, 3.1vw, 2.7rem);
-  font-style: italic;
-  line-height: 1.2;
-  letter-spacing: -0.015em;
-}
-
 .caption--collection { display: grid; gap: 16px; justify-items: center; }
 .caption--collection .caption__eyebrow { opacity: 0.62; }
 
-.caption--collection strong {
+.caption__statement {
+  display: block;
   font-family: var(--serif);
-  font-size: clamp(1.4rem, 2.7vw, 2.4rem);
-  font-weight: 420;
-  line-height: 1.22;
-  letter-spacing: -0.015em;
+  font-size: clamp(1.6rem, 3.9vw, 4.75rem);
+  font-weight: 450;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.caption__typewriter { display: block; }
+
+.caption__typewriter-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.caption__typewriter-character {
+  position: relative;
+  visibility: hidden;
+}
+
+.caption__typewriter-character.is-visible { visibility: visible; }
+
+.caption__typewriter-character.is-caret::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -0.08em;
+  width: 1px;
+  height: 0.86em;
+  transform: translateY(-50%);
+  background: var(--accent);
+}
+
+.caption__typewriter.is-complete .caption__typewriter-character.is-caret::after {
+  animation: typewriter-caret-blink 0.9s steps(1, end) infinite;
+}
+
+@keyframes typewriter-caret-blink {
+  0%, 45% { opacity: 1; }
+  46%, 100% { opacity: 0; }
 }
 
 /* ---- 03 Selected works --------------------------------------------------- */
@@ -1910,9 +1938,6 @@ main { position: relative; z-index: 3; }
 
 /* An unlit step of the process list is still legible, as it is in motion. */
 .reduced-motion .process__step { opacity: 0.55 !important; }
-
-/* Both captions share one grid cell, so only the closing one is kept. */
-.reduced-motion .caption--room { display: none; }
 
 /* Metadata and the reserved note also share a cell; give them a row each. */
 .reduced-motion .works { grid-template-rows: 1fr auto auto; }

@@ -113,6 +113,11 @@ SHELF.all.slice(1).forEach((slot, index) => {
 /* ---- ledger -------------------------------------------------------- */
 
 const chapterIds = new Set(CHAPTERS.map((chapter) => chapter.id));
+CHAPTERS.forEach((chapter) => {
+  const [start, end] = chapter.readingWindow ?? [];
+  check(Number.isFinite(start) && Number.isFinite(end) && start >= 0 && end <= 1 && start < end,
+    `${chapter.id} has no valid local reading window for adaptive scroll pacing`);
+});
 KEYFRAMES.forEach((frame) => {
   check(chapterIds.has(frame.chapter), `Keyframe ${frame.id} names an unknown chapter`);
   check(frame.camera.mobile, `Keyframe ${frame.id} has no compact composition`);
@@ -422,6 +427,9 @@ check(/classList\.toggle\("reduced-motion"/.test(main),
 
 check(!/addEventListener\(\s*["']scroll["']/.test(main + world),
   "Scroll must reach the world through the conductor, not a raw listener");
+check(conductor.includes("virtualScroll") &&
+  /data\.deltaY\s*\*=\s*state\.wheelScale/.test(conductor),
+  "Lenis wheel input must slow during authored reading windows");
 
 // The hero entrance is primed under the loader, played from one guarded call,
 // and never asks either GSAP or CSS to repeat it.
@@ -429,7 +437,8 @@ check(main.includes("paused: true") && main.includes("playHeroIntroOnce()"),
   "The hero entrance must be ready before the loader dismisses and play through its one-shot guard");
 check(main.indexOf("heroIntro = createHeroIntro(world)") < main.lastIndexOf("await dismiss()"),
   "The hero entrance must be created before the preloader is dismissed");
-check(!/\.ready \.frontispiece__open svg[\s\S]*?infinite/.test(css),
+const heroArrowRule = css.match(/\.ready \.frontispiece__open svg\s*\{([^}]*)\}/)?.[1] || "";
+check(!/\binfinite\b/.test(heroArrowRule),
   "The hero's load-time arrow animation must not repeat");
 
 /*

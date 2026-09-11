@@ -168,7 +168,7 @@ Components are refined and restrained. They use hairlines, precise corners, and 
 - Inspection moves the same object, traps focus in a semantic dialog, and restores its exact saved transform on close.
 
 ### Motion
-- Scroll uses one persistent Three.js world, Lenis smoothing at `0.08`, and GSAP scrub values from `0.8` to `1.1`.
+- Scroll uses one persistent Three.js world, restrained Lenis smoothing at `0.22` with capped wheel steps, and GSAP scrub values from `0.8` to `1.1`.
 - Interface motion uses `cubic-bezier(0.16, 1, 0.3, 1)` for arrival and `cubic-bezier(0.76, 0, 0.24, 1)` for deliberate scene changes.
 - Reduced motion removes smoothing and continuous choreography while preserving all chapters and project controls.
 

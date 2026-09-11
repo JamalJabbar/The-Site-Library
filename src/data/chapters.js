@@ -3,10 +3,11 @@ import { SHELF } from "./projects.js";
 /**
  * The scene ledger.
  *
- * CHAPTERS give the document its scroll weight and the indicator its labels.
- * KEYFRAMES are the authored camera and world states. Each keyframe is anchored
- * to a chapter plus a local position inside it, so changing a section's height
- * never desynchronises the choreography from the copy.
+ * CHAPTERS give the document its scroll weight, indicator labels and reading
+ * window. Inside that local window Lenis reduces wheel input so copy cannot be
+ * rushed past as easily. KEYFRAMES are the authored camera and world states.
+ * Each keyframe is anchored to a chapter plus a local position inside it, so
+ * changing a section's height never desynchronises the choreography from copy.
  *
  * Every world value is interpolated between adjacent keyframes once per frame.
  * No subsystem reads raw scroll or compares progress against its own threshold.
@@ -16,16 +17,16 @@ import { SHELF } from "./projects.js";
  */
 
 export const CHAPTERS = [
-  { id: "frontispiece", number: "01", label: "Frontispiece", nav: "Index", weight: 1.0, tone: "light" },
-  { id: "stacks", number: "02", label: "Into the Stacks", nav: "Into the Stacks", weight: 5.4, tone: "shift" },
+  { id: "frontispiece", number: "01", label: "Frontispiece", nav: "Index", weight: 1.0, tone: "light", readingWindow: [0, 0.82] },
+  { id: "stacks", number: "02", label: "Into the Stacks", nav: "Into the Stacks", weight: 5.4, tone: "shift", readingWindow: [0.27, 0.97] },
   // The heaviest chapter in the book. Every volume in the collection has to
   // leave the shelf, turn, be read and go back, so the traverse is paced for
   // dwell on each one rather than for the distance the lens covers.
-  { id: "selected-works", number: "03", label: "Selected Works", nav: "Selected Works", weight: 6.5, tone: "dark" },
-  { id: "reading-room", number: "04", label: "The Reading Room", nav: "Reading Room", weight: 2.4, tone: "dark" },
-  { id: "binding", number: "05", label: "Binding", nav: "Binding", weight: 3.4, tone: "dark" },
-  { id: "studio", number: "06", label: "The Studio", nav: "Studio", weight: 2.4, tone: "dark" },
-  { id: "commission", number: "07", label: "Commission", nav: "Contact", weight: 2.6, tone: "dark" }
+  { id: "selected-works", number: "03", label: "Selected Works", nav: "Selected Works", weight: 6.5, tone: "dark", readingWindow: [0.04, 0.97] },
+  { id: "reading-room", number: "04", label: "The Reading Room", nav: "Reading Room", weight: 2.4, tone: "dark", readingWindow: [0.03, 0.94] },
+  { id: "binding", number: "05", label: "Binding", nav: "Binding", weight: 3.4, tone: "dark", readingWindow: [0.03, 0.94] },
+  { id: "studio", number: "06", label: "The Studio", nav: "Studio", weight: 3.4, tone: "dark", readingWindow: [0.02, 0.98] },
+  { id: "commission", number: "07", label: "Commission", nav: "Contact", weight: 2.6, tone: "dark", readingWindow: [0.03, 1] }
 ];
 
 /** Where the hero volume floats before it is returned to the collection. */

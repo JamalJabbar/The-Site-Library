@@ -364,6 +364,19 @@ function frame(time) {
   }
 }
 
+function scheduleRestoredScrollSync() {
+  // Browser scroll restoration can settle after the first layout pass. Two
+  // frames let the restored position and the refreshed trigger bounds agree
+  // before the typewriter is asked to render its current progress.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!conductor) return;
+    ScrollTrigger.refresh();
+    world?.setAnchors(conductor.sync());
+    smooth = conductor.state.exact;
+    conductor.state.smooth = smooth;
+  }));
+}
+
 /* ------------------------------------------------------------------ *
  * Boot
  * ------------------------------------------------------------------ */
@@ -482,6 +495,7 @@ async function boot() {
   await dismiss();
   document.documentElement.classList.add("ready");
   playHeroIntroOnce();
+  scheduleRestoredScrollSync();
 }
 
 /* ------------------------------------------------------------------ *
@@ -509,6 +523,7 @@ function handleResize() {
 }
 
 window.addEventListener("resize", handleResize, { passive: true });
+window.addEventListener("pageshow", scheduleRestoredScrollSync, { passive: true });
 
 // The window resize event is not fired for every way a viewport can change,
 // notably when the page is embedded and its container is resized. Observing the
