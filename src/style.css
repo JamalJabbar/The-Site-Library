@@ -470,6 +470,7 @@ button {
   position: absolute;
   inset: -18px -46px -22px -32px;
   z-index: -1;
+  opacity: 1;
   background: radial-gradient(150% 190% at 38% 58%,
     rgba(var(--scrim), 0.62) 0%,
     rgba(var(--scrim), 0.5) 26%,
@@ -477,8 +478,12 @@ button {
     rgba(var(--scrim), 0.17) 70%,
     rgba(var(--scrim), 0.05) 87%,
     rgba(var(--scrim), 0) 100%);
-  transition: background var(--turn);
+  transition: opacity var(--turn);
 }
+
+/* The footer is already a quiet, readable field. Let the ledger sit directly
+   on it instead of carrying the archive's dark corner plate into the close. */
+[data-chapter="commission"] .ledger::before { opacity: 0; }
 
 .ledger__rule { width: 14px; height: 1px; background: currentColor; opacity: 0.5; }
 /* The ledger is a hierarchy, not a fade: the chapter you are in, the chapter
